@@ -270,6 +270,7 @@
   .suggest-card:active{ background:var(--herb-pale); }
   .suggest-card-name{ font-size:14.5px; font-weight:700; margin:0 0 4px; }
   .suggest-card-desc{ font-size:12.5px; color:var(--ink-soft); margin:0 0 6px; line-height:1.5; }
+  .suggest-card-cal{ font-size:11.5px; color:var(--herb-deep); font-weight:700; margin:0; }
   .more-suggest-btn{
     width:100%; margin-top:10px; border:1.6px dashed var(--dash); background:none; color:var(--herb-deep);
     font-weight:700; font-size:13.5px; padding:10px 0; border-radius:11px; cursor:pointer;
@@ -359,11 +360,14 @@
   var GAS_URL = "https://script.google.com/macros/s/AKfycbxY7V5aCfwvIh7mW8oVftGeyP5AQr80pazpjxzCEfQLg5hRb3dccznVWeJBeVrweXB_/exec";
   var DOW = ['月','火','水','木','金','土','日'];
   var TAGS = [
-    {key:'普段', color:'ink-soft'},
-    {key:'ヘルシー', color:'herb'},
     {key:'ダイエット', color:'blueberry'},
-    {key:'がっつり', color:'yolk'},
-    {key:'時短', color:'brick'}
+    {key:'肉料理', color:'brick'},
+    {key:'魚料理', color:'herb'},
+    {key:'スープ', color:'yolk'},
+    {key:'和食', color:'ink-soft'},
+    {key:'洋食', color:'blueberry'},
+    {key:'中華', color:'brick'},
+    {key:'イタリアン', color:'herb'}
   ];
 
   var state = {
@@ -376,7 +380,7 @@
     syncError: false,
     activeView: 'plan',
     openDateKey: null,
-    selectedTag: '普段',
+    selectedTag: 'ダイエット',
     suggestLoading: false,
     suggestResults: [],
     suggestError: null
@@ -663,6 +667,7 @@
         html += '<div class="suggest-card" data-idx="' + i + '">';
         html += '<p class="suggest-card-name">' + esc(s.name||'') + '</p>';
         if(s.description) html += '<p class="suggest-card-desc">' + esc(s.description) + '</p>';
+        if(s.caloriesKcal) html += '<p class="suggest-card-cal">約' + esc(s.caloriesKcal) + 'kcal（1人前）</p>';
         html += '</div>';
       });
       html += '</div>';
