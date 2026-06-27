@@ -325,6 +325,13 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  if (location.search.indexOf('debug=1') !== -1) {
+    eruda.init();
+  }
+</script>
+
 <script>
 (function(){
   "use strict";
