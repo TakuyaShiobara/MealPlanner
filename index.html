@@ -459,35 +459,22 @@
     postAction({action:'setFridge', items: JSON.stringify(state.fridge)}).catch(function(){});
   }
 
-  // ---------- AI suggestion ----------
+  // ---------- AI suggestion (via Apps Script, which calls Gemini securely) ----------
   function fetchSuggestions(){
     state.suggestLoading = true; state.suggestError = null; state.suggestResults = [];
     renderSuggestArea();
 
-    var fridgeText = state.fridge.length ? state.fridge.join('、') : '（特に指定なし。一般的な家庭の食材で）';
-    var prompt = "あなたは家庭料理のレシピ提案アシスタントです。\n" +
-      "冷蔵庫にある食材: " + fridgeText + "\n" +
-      "希望する献立の系統: " + state.selectedTag + "\n\n" +
-      "この条件で、2人分の夕食の献立を4つ提案してください。\n" +
-      "冷蔵庫の食材をできるだけ活用してください。塩・醤油・油・砂糖・味噌などの基本調味料は冷蔵庫リストになくても使って構いません。\n" +
-      "必ず次のJSON配列の形式のみで回答し、説明文やコードブロックの記号(```)は一切付けないでください。\n\n" +
-      '[{"name":"料理名","description":"15〜25文字程度の説明","mainIngredients":["主な食材1","主な食材2"]}]';
-
-    fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{role:"user", content: prompt}]
-      })
+    jsonpRequest({
+      action: 'suggest',
+      fridge: JSON.stringify(state.fridge),
+      tag: state.selectedTag
     })
-    .then(function(res){ return res.json(); })
     .then(function(data){
-      var text = (data.content || []).map(function(b){ return b.text || ''; }).join('').trim();
-      var clean = text.replace(/^```json\s*|^```\s*|```$/g, '').trim();
-      var parsed = JSON.parse(clean);
-      state.suggestResults = Array.isArray(parsed) ? parsed : [];
+      if(data.error){
+        state.suggestError = data.error;
+        return;
+      }
+      state.suggestResults = Array.isArray(data.suggestions) ? data.suggestions : [];
       if(state.suggestResults.length === 0){
         state.suggestError = '提案を取得できませんでした。もう一度お試しください。';
       }
@@ -507,6 +494,7 @@
     saveMeal(state.openDateKey, s.name, state.selectedTag);
     closeSheet();
   }
+
 
   // ---------- render: header ----------
   function renderHeader(){
