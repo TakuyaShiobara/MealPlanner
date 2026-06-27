@@ -229,6 +229,13 @@
 
   .block-card{ background:var(--paper); border-radius:14px; padding:14px; box-shadow:var(--shadow); margin-bottom:14px; }
   .block-label{ margin:0 0 10px; font-size:13.5px; font-weight:700; color:var(--ink); }
+  .block-label-row{ display:flex; align-items:center; justify-content:space-between; }
+  .block-label-row .block-label{ margin:0 0 10px; }
+  .clear-link{
+    border:none; background:none; color:var(--danger); font-size:12.5px; font-weight:700;
+    cursor:pointer; padding:0 0 10px;
+  }
+  .clear-link.hidden{ display:none; }
   .input-row{ display:flex; gap:8px; }
   .input-row input{
     flex:1 1 auto; min-width:0; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
@@ -263,7 +270,11 @@
   .suggest-card:active{ background:var(--herb-pale); }
   .suggest-card-name{ font-size:14.5px; font-weight:700; margin:0 0 4px; }
   .suggest-card-desc{ font-size:12.5px; color:var(--ink-soft); margin:0 0 6px; line-height:1.5; }
-  .suggest-card-ing{ font-size:11.5px; color:var(--herb-deep); }
+  .more-suggest-btn{
+    width:100%; margin-top:10px; border:1.6px dashed var(--dash); background:none; color:var(--herb-deep);
+    font-weight:700; font-size:13.5px; padding:10px 0; border-radius:11px; cursor:pointer;
+  }
+  .more-suggest-btn[disabled]{ color:var(--ink-soft); border-color:var(--line); }
 </style>
 </head>
 <body>
@@ -313,7 +324,10 @@
     </div>
 
     <div class="block-card">
-      <p class="block-label">直接入力する</p>
+      <div class="block-label-row">
+        <p class="block-label">直接入力する</p>
+        <button id="clearMealBtn" class="clear-link hidden">未定に戻す</button>
+      </div>
       <div class="input-row">
         <input id="directMealInput" placeholder="例：麻婆豆腐" />
         <button id="directSaveBtn" class="btn-primary">保存</button>
@@ -481,22 +495,27 @@
   }
 
   // ---------- AI suggestion (via Apps Script, which calls Gemini securely) ----------
-  function fetchSuggestions(){
-    state.suggestLoading = true; state.suggestError = null; state.suggestResults = [];
+  function fetchSuggestions(isMore){
+    state.suggestLoading = true; state.suggestError = null;
+    if(!isMore) state.suggestResults = [];
     renderSuggestArea();
+
+    var excludeNames = state.suggestResults.map(function(s){ return s.name; });
 
     jsonpRequest({
       action: 'suggest',
       fridge: JSON.stringify(state.fridge),
-      tag: state.selectedTag
+      tag: state.selectedTag,
+      exclude: JSON.stringify(excludeNames)
     })
     .then(function(data){
       if(data.error){
         state.suggestError = data.error;
         return;
       }
-      state.suggestResults = Array.isArray(data.suggestions) ? data.suggestions : [];
-      if(state.suggestResults.length === 0){
+      var newOnes = Array.isArray(data.suggestions) ? data.suggestions : [];
+      state.suggestResults = state.suggestResults.concat(newOnes);
+      if(newOnes.length === 0){
         state.suggestError = '提案を取得できませんでした。もう一度お試しください。';
       }
     })
@@ -608,6 +627,7 @@
     document.getElementById('sheetTitle').textContent = DOW[idx] + '曜日 ' + fmtShort(d);
     var entry = state.plan[dateKey];
     document.getElementById('directMealInput').value = entry ? entry.meal : '';
+    document.getElementById('clearMealBtn').classList.toggle('hidden', !(entry && entry.meal));
     renderTagChips();
     renderSuggestArea();
     document.getElementById('sheetOverlay').classList.remove('hidden');
@@ -629,27 +649,27 @@
   function renderSuggestArea(){
     var area = document.getElementById('suggestArea');
     var btn = document.getElementById('suggestBtn');
+    var isFirstLoad = state.suggestLoading && state.suggestResults.length === 0;
     btn.disabled = state.suggestLoading;
-    btn.textContent = state.suggestLoading ? '考えています…' : 'この条件で提案を見る';
+    btn.textContent = isFirstLoad ? '考えています…' : 'この条件で提案を見る';
 
     var html = '';
-    if(state.suggestLoading){
-      html += '<div class="suggest-status">献立を考えています…</div>';
-    }
     if(state.suggestError){
       html += '<div class="suggest-error">' + esc(state.suggestError) + '</div>';
     }
-    if(!state.suggestLoading && state.suggestResults.length){
+    if(state.suggestResults.length){
       html += '<div class="suggest-results">';
       state.suggestResults.forEach(function(s, i){
-        var ing = Array.isArray(s.mainIngredients) ? s.mainIngredients.join('・') : '';
         html += '<div class="suggest-card" data-idx="' + i + '">';
         html += '<p class="suggest-card-name">' + esc(s.name||'') + '</p>';
         if(s.description) html += '<p class="suggest-card-desc">' + esc(s.description) + '</p>';
-        if(ing) html += '<p class="suggest-card-ing">使う食材: ' + esc(ing) + '</p>';
         html += '</div>';
       });
       html += '</div>';
+      html += '<button id="moreSuggestBtn" class="more-suggest-btn"' + (state.suggestLoading ? ' disabled' : '') + '>' +
+        (state.suggestLoading && !isFirstLoad ? '考えています…' : 'ほかの提案を見る') + '</button>';
+    } else if(isFirstLoad){
+      html += '<div class="suggest-status">献立を考えています…</div>';
     }
     area.innerHTML = html;
   }
@@ -709,6 +729,11 @@
     if(e.key === 'Enter') document.getElementById('directSaveBtn').click();
   });
 
+  document.getElementById('clearMealBtn').addEventListener('click', function(){
+    saveMeal(state.openDateKey, '', '');
+    closeSheet();
+  });
+
   document.getElementById('tagChips').addEventListener('click', function(e){
     var btn = e.target.closest('.tag-chip-btn');
     if(!btn) return;
@@ -716,11 +741,12 @@
     renderTagChips();
   });
 
-  document.getElementById('suggestBtn').addEventListener('click', fetchSuggestions);
+  document.getElementById('suggestBtn').addEventListener('click', function(){ fetchSuggestions(false); });
 
   document.getElementById('suggestArea').addEventListener('click', function(e){
     var card = e.target.closest('.suggest-card');
-    if(card) selectSuggestion(parseInt(card.getAttribute('data-idx'),10));
+    if(card){ selectSuggestion(parseInt(card.getAttribute('data-idx'),10)); return; }
+    if(e.target.id === 'moreSuggestBtn') fetchSuggestions(true);
   });
 
   document.getElementById('fridgeAddBtn').addEventListener('click', addFridgeItem);
