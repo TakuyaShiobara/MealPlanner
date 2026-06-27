@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3F7D58">
+<title>今週の献立</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF2EF;
+    --paper:#FFFFFF;
+    --ink:#233029;
+    --ink-soft:#65766C;
+    --herb:#3F7D58;
+    --herb-deep:#2C5B40;
+    --herb-pale:#E4EFE7;
+    --yolk:#E08A3E;
+    --yolk-pale:#FBE9D7;
+    --blueberry:#5B6FA3;
+    --blueberry-pale:#E7E9F3;
+    --brick:#B06249;
+    --brick-pale:#F4E3DD;
+    --line:#DCE3DE;
+    --dash:#B9C4BE;
+    --danger:#C2453A;
+    --danger-pale:#F6DEDB;
+    --shadow:0 3px 14px rgba(35,48,41,.10);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  button{font-family:inherit;}
+  input{font-family:inherit;}
+  .display-font{font-family:"Yusei Magic","Zen Maru Gothic",sans-serif;}
+  :focus-visible{outline:2px solid var(--herb); outline-offset:2px; border-radius:4px;}
+
+  .app-shell{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg);
+    position:relative;
+    padding-bottom:78px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--bg);
+    padding:14px 14px 8px;
+  }
+  .topbar-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--paper);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:6px 4px;
+  }
+  .nav-btn{
+    width:42px; height:42px; border:none; background:transparent;
+    color:var(--herb-deep); font-size:22px; border-radius:10px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .nav-btn:active{background:var(--herb-pale);}
+  .week-label{ text-align:center; flex:1; }
+  .week-label h1{
+    margin:0; font-size:17px; font-weight:700; letter-spacing:.02em;
+  }
+  .today-link{
+    margin-top:1px; border:none; background:none; color:var(--herb);
+    font-size:12px; font-weight:700; cursor:pointer; padding:2px 6px;
+  }
+  .sync-row{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    margin-top:8px; font-size:11.5px; color:var(--ink-soft);
+  }
+  .sync-row button{
+    border:none; background:none; color:var(--herb-deep); font-weight:700;
+    font-size:11.5px; cursor:pointer; display:flex; align-items:center; gap:3px;
+  }
+  .sync-dot{ width:6px; height:6px; border-radius:50%; background:var(--herb); flex-shrink:0; }
+  .sync-dot.err{ background:var(--danger); }
+
+  .load-error-banner{
+    margin:0 14px 10px; padding:12px 14px; background:var(--danger-pale);
+    border:1px solid #e3bdb8; border-radius:12px; font-size:13px; color:#7d2e26;
+  }
+  .load-error-banner button{
+    margin-top:8px; border:none; background:var(--danger); color:#fff;
+    padding:7px 14px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer;
+  }
+
+  /* ---------- Views ---------- */
+  .view{ flex:1; padding:6px 14px 20px; }
+  .view.hidden{ display:none; }
+  .skeleton-row{
+    height:88px; border-radius:var(--radius); background:linear-gradient(90deg,#fff,#f3f5f3,#fff);
+    margin-bottom:12px;
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .skeleton-row{ animation:shimmer 1.3s infinite; background-size:200% 100%; }
+    @keyframes shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+  }
+
+  /* ---------- Day cards ---------- */
+  .day-list{ list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:12px; }
+  .day-card{
+    position:relative; background:var(--paper); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:14px 16px 14px 20px; cursor:pointer;
+    border:1px solid transparent;
+  }
+  .day-card:active{ transform:scale(.992); }
+  .day-card.is-today{ border-color:var(--herb); }
+  .day-card.empty{
+    background:transparent; box-shadow:none; border:1.6px dashed var(--dash);
+  }
+  .magnet{
+    position:absolute; top:-9px; left:14px; width:20px; height:20px; border-radius:50%;
+    box-shadow:0 2px 4px rgba(0,0,0,.18);
+  }
+  .magnet-0{ background:radial-gradient(circle at 30% 30%, #6fae84, var(--herb)); transform:rotate(-8deg); }
+  .magnet-1{ background:radial-gradient(circle at 30% 30%, #f0ae6c, var(--yolk)); transform:rotate(10deg); }
+  .magnet-2{ background:radial-gradient(circle at 30% 30%, #8a9bcb, var(--blueberry)); transform:rotate(-5deg); }
+  .magnet-3{ background:radial-gradient(circle at 30% 30%, #cb8a76, var(--brick)); transform:rotate(7deg); }
+  .day-card.empty .magnet{ opacity:.45; }
+
+  .day-card-head{ display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
+  .dow{ font-family:"Yusei Magic",sans-serif; font-size:15px; color:var(--ink); }
+  .date-num{ font-size:12.5px; color:var(--ink-soft); }
+  .today-badge{
+    margin-left:auto; background:var(--herb); color:#fff; font-size:11px; font-weight:700;
+    padding:2px 8px; border-radius:20px;
+  }
+  .meal-name{ margin:0 0 6px; font-size:16px; font-weight:700; line-height:1.4; }
+  .tag-chip{ display:inline-block; font-size:11.5px; font-weight:700; padding:2px 10px; border-radius:20px; }
+  .tag-chip.c-herb{ background:var(--herb-pale); color:var(--herb-deep); }
+  .tag-chip.c-yolk{ background:var(--yolk-pale); color:#9a5a1e; }
+  .tag-chip.c-blueberry{ background:var(--blueberry-pale); color:var(--blueberry); }
+  .tag-chip.c-brick{ background:var(--brick-pale); color:var(--brick); }
+  .tag-chip.c-ink-soft{ background:#eef1ef; color:var(--ink-soft); }
+
+  .empty-invite{ margin:0; color:var(--ink-soft); font-size:13.5px; line-height:1.6; }
+  .empty-cta{ font-family:"Yusei Magic",sans-serif; color:var(--herb-deep); font-size:13.5px; }
+
+  /* ---------- Fridge view ---------- */
+  .fridge-intro{ font-size:13px; color:var(--ink-soft); margin:6px 2px 14px; line-height:1.6; }
+  .fridge-add{ display:flex; gap:8px; margin-bottom:14px; }
+  .fridge-add input{
+    flex:1; border:1.6px solid var(--line); border-radius:10px; padding:11px 13px;
+    font-size:15px; background:var(--paper);
+  }
+  .btn-primary{
+    border:none; background:var(--herb); color:#fff; font-weight:700; font-size:14px;
+    border-radius:10px; padding:0 18px; cursor:pointer;
+  }
+  .btn-primary:active{ background:var(--herb-deep); }
+  .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
+
+  .fridge-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .fridge-item{
+    display:flex; align-items:center; gap:10px; background:var(--paper);
+    border-radius:12px; padding:10px 12px; box-shadow:var(--shadow);
+  }
+  .fridge-dot{ width:8px; height:8px; border-radius:50%; background:var(--herb); flex-shrink:0; }
+  .fridge-name{ flex:1; font-size:14.5px; }
+  .fridge-remove{
+    border:none; background:none; color:var(--ink-soft); font-size:15px; cursor:pointer;
+    width:28px; height:28px; border-radius:50%;
+  }
+  .fridge-remove:active{ background:#eef1ef; }
+  .fridge-empty{
+    text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px;
+    border:1.6px dashed var(--dash); border-radius:14px; line-height:1.7;
+  }
+
+  /* ---------- Tab bar ---------- */
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    max-width:480px; margin:0 auto;
+    background:var(--paper); border-top:1px solid var(--line);
+    display:flex; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  .tab-btn{
+    flex:1; border:none; background:none; padding:8px 0; font-size:12.5px; font-weight:700;
+    color:var(--ink-soft); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;
+  }
+  .tab-btn .icon{ font-size:19px; }
+  .tab-btn.active{ color:var(--herb-deep); }
+
+  /* ---------- Sheet ---------- */
+  .sheet-overlay{
+    position:fixed; inset:0; background:rgba(35,48,41,.42); z-index:50;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  .sheet-overlay.hidden{ display:none; }
+  .sheet{
+    width:100%; max-width:480px; max-height:88vh; overflow-y:auto;
+    background:var(--bg); border-radius:20px 20px 0 0; padding:18px 18px 28px;
+    transform:translateY(0);
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .sheet{ animation:sheetUp .22s ease-out; }
+    @keyframes sheetUp{ from{ transform:translateY(24px); opacity:.4; } to{ transform:translateY(0); opacity:1; } }
+  }
+  .sheet-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .sheet-header h2{ margin:0; font-size:17px; font-family:"Yusei Magic",sans-serif; }
+  .sheet-close{
+    border:none; background:var(--paper); width:32px; height:32px; border-radius:50%;
+    box-shadow:var(--shadow); font-size:14px; cursor:pointer; color:var(--ink-soft);
+  }
+
+  .block-card{ background:var(--paper); border-radius:14px; padding:14px; box-shadow:var(--shadow); margin-bottom:14px; }
+  .block-label{ margin:0 0 10px; font-size:13.5px; font-weight:700; color:var(--ink); }
+  .input-row{ display:flex; gap:8px; }
+  .input-row input{
+    flex:1; border:1.6px solid var(--line); border-radius:10px; padding:11px 13px;
+    font-size:15px; background:#fff;
+  }
+
+  .sheet-divider{ display:flex; align-items:center; gap:10px; margin:6px 0 14px; color:var(--ink-soft); font-size:12px; }
+  .sheet-divider::before, .sheet-divider::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+  .tag-chips{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px; }
+  .tag-chip-btn{
+    border:1.6px solid var(--line); background:#fff; border-radius:20px; padding:6px 13px;
+    font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  }
+  .tag-chip-btn.active{ background:var(--herb); border-color:var(--herb); color:#fff; }
+
+  .suggest-btn{
+    width:100%; border:none; background:var(--herb); color:#fff; font-weight:700; font-size:14.5px;
+    padding:12px 0; border-radius:11px; cursor:pointer;
+  }
+  .suggest-btn[disabled]{ background:#a9bcb1; }
+
+  .suggest-status{ text-align:center; padding:18px 0; color:var(--ink-soft); font-size:13.5px; }
+  .suggest-error{
+    margin-top:12px; padding:10px 12px; background:var(--danger-pale); color:#7d2e26;
+    border-radius:10px; font-size:13px;
+  }
+  .suggest-results{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+  .suggest-card{
+    border:1.6px solid var(--line); border-radius:12px; padding:12px 13px; cursor:pointer; background:#fff;
+  }
+  .suggest-card:active{ background:var(--herb-pale); }
+  .suggest-card-name{ font-size:14.5px; font-weight:700; margin:0 0 4px; }
+  .suggest-card-desc{ font-size:12.5px; color:var(--ink-soft); margin:0 0 6px; line-height:1.5; }
+  .suggest-card-ing{ font-size:11.5px; color:var(--herb-deep); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <button id="prevWeek" class="nav-btn" aria-label="前の週へ">‹</button>
+      <div class="week-label">
+        <h1 id="weekRange" class="display-font">-</h1>
+        <button id="todayBtn" class="today-link">今週へ戻る</button>
+      </div>
+      <button id="nextWeek" class="nav-btn" aria-label="次の週へ">›</button>
+    </div>
+    <div class="sync-row" id="syncRow">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncText">同期中…</span>
+      <button id="refreshBtn">⟳ 更新</button>
+    </div>
+  </header>
+
+  <main id="planView" class="view">
+    <div id="loadErrorBox"></div>
+    <ul id="dayList" class="day-list"></ul>
+  </main>
+
+  <main id="fridgeView" class="view hidden">
+    <p class="fridge-intro">ここに入れた食材を使って、AIが献立を提案します。買ったものや残っているものを入れておきましょう。</p>
+    <div class="fridge-add">
+      <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
+      <button id="fridgeAddBtn" class="btn-primary">追加</button>
+    </div>
+    <ul id="fridgeList" class="fridge-list"></ul>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-view="plan"><span class="icon">📋</span>今週の献立</button>
+    <button class="tab-btn" data-view="fridge"><span class="icon">🧊</span>冷蔵庫</button>
+  </nav>
+</div>
+
+<div id="sheetOverlay" class="sheet-overlay hidden">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-header">
+      <h2 id="sheetTitle">-</h2>
+      <button class="sheet-close" id="sheetCloseBtn" aria-label="閉じる">✕</button>
+    </div>
+
+    <div class="block-card">
+      <p class="block-label">直接入力する</p>
+      <div class="input-row">
+        <input id="directMealInput" placeholder="例：麻婆豆腐" />
+        <button id="directSaveBtn" class="btn-primary">保存</button>
+      </div>
+    </div>
+
+    <div class="sheet-divider"><span>または</span></div>
+
+    <div class="block-card">
+      <p class="block-label">AIに提案してもらう</p>
+      <div class="tag-chips" id="tagChips"></div>
+      <button id="suggestBtn" class="suggest-btn">この条件で提案を見る</button>
+      <div id="suggestArea"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var GAS_URL = "https://script.google.com/macros/s/AKfycbxY7V5aCfwvIh7mW8oVftGeyP5AQr80pazpjxzCEfQLg5hRb3dccznVWeJBeVrweXB_/exec";
+  var DOW = ['月','火','水','木','金','土','日'];
+  var TAGS = [
+    {key:'普段', color:'ink-soft'},
+    {key:'ヘルシー', color:'herb'},
+    {key:'ダイエット', color:'blueberry'},
+    {key:'がっつり', color:'yolk'},
+    {key:'時短', color:'brick'}
+  ];
+
+  var state = {
+    weekStart: getMonday(new Date()),
+    plan: {},
+    fridge: [],
+    loading: true,
+    loadError: null,
+    lastSync: null,
+    syncError: false,
+    activeView: 'plan',
+    openDateKey: null,
+    selectedTag: '普段',
+    suggestLoading: false,
+    suggestResults: [],
+    suggestError: null
+  };
+
+  // ---------- utils ----------
+  function esc(s){
+    return String(s==null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function getMonday(d){
+    var date = new Date(d);
+    var day = date.getDay();
+    var diff = (day===0 ? -6 : 1-day);
+    date.setDate(date.getDate()+diff);
+    date.setHours(0,0,0,0);
+    return date;
+  }
+  function fmtKey(d){
+    var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+day;
+  }
+  function fmtShort(d){ return (d.getMonth()+1)+'/'+d.getDate(); }
+  function addDays(d,n){ var r=new Date(d); r.setDate(r.getDate()+n); return r; }
+  function isSameDate(a,b){ return fmtKey(a)===fmtKey(b); }
+  function tagColorClass(tag){
+    var f = TAGS.filter(function(t){return t.key===tag;})[0];
+    return f ? f.color : 'ink-soft';
+  }
+  function tagChipColorClassName(tag){
+    return 'c-' + tagColorClass(tag);
+  }
+
+  // ---------- data layer ----------
+  function loadAll(){
+    state.loading = true; state.loadError = null;
+    render();
+    fetch(GAS_URL + '?action=getAll')
+      .then(function(res){ if(!res.ok) throw new Error('network'); return res.json(); })
+      .then(function(data){
+        state.plan = data.plan || {};
+        state.fridge = data.fridge || [];
+        state.lastSync = new Date();
+        state.syncError = false;
+      })
+      .catch(function(){
+        state.loadError = 'データを読み込めませんでした。通信状況を確認して、もう一度お試しください。';
+        state.syncError = true;
+      })
+      .then(function(){
+        state.loading = false;
+        render();
+      });
+  }
+
+  function postAction(body){
+    return fetch(GAS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(body)
+    }).then(function(res){
+      if(!res.ok) throw new Error('network');
+      state.lastSync = new Date();
+      state.syncError = false;
+      return res.json();
+    }).catch(function(err){
+      state.syncError = true;
+      renderSyncRow();
+      throw err;
+    });
+  }
+
+  function saveMeal(dateKey, meal, tag){
+    state.plan[dateKey] = {meal: meal, tag: tag || ''};
+    render();
+    postAction({action:'setMeal', date: dateKey, meal: meal, tag: tag || ''}).catch(function(){});
+  }
+
+  function saveFridge(){
+    renderFridgeList();
+    postAction({action:'setFridge', items: state.fridge}).catch(function(){});
+  }
+
+  // ---------- AI suggestion ----------
+  function fetchSuggestions(){
+    state.suggestLoading = true; state.suggestError = null; state.suggestResults = [];
+    renderSuggestArea();
+
+    var fridgeText = state.fridge.length ? state.fridge.join('、') : '（特に指定なし。一般的な家庭の食材で）';
+    var prompt = "あなたは家庭料理のレシピ提案アシスタントです。\n" +
+      "冷蔵庫にある食材: " + fridgeText + "\n" +
+      "希望する献立の系統: " + state.selectedTag + "\n\n" +
+      "この条件で、2人分の夕食の献立を4つ提案してください。\n" +
+      "冷蔵庫の食材をできるだけ活用してください。塩・醤油・油・砂糖・味噌などの基本調味料は冷蔵庫リストになくても使って構いません。\n" +
+      "必ず次のJSON配列の形式のみで回答し、説明文やコードブロックの記号(```)は一切付けないでください。\n\n" +
+      '[{"name":"料理名","description":"15〜25文字程度の説明","mainIngredients":["主な食材1","主な食材2"]}]';
+
+    fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{role:"user", content: prompt}]
+      })
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      var text = (data.content || []).map(function(b){ return b.text || ''; }).join('').trim();
+      var clean = text.replace(/^```json\s*|^```\s*|```$/g, '').trim();
+      var parsed = JSON.parse(clean);
+      state.suggestResults = Array.isArray(parsed) ? parsed : [];
+      if(state.suggestResults.length === 0){
+        state.suggestError = '提案を取得できませんでした。もう一度お試しください。';
+      }
+    })
+    .catch(function(){
+      state.suggestError = '提案の取得に失敗しました。もう一度お試しください。';
+    })
+    .then(function(){
+      state.suggestLoading = false;
+      renderSuggestArea();
+    });
+  }
+
+  function selectSuggestion(idx){
+    var s = state.suggestResults[idx];
+    if(!s) return;
+    saveMeal(state.openDateKey, s.name, state.selectedTag);
+    closeSheet();
+  }
+
+  // ---------- render: header ----------
+  function renderHeader(){
+    var start = state.weekStart, end = addDays(start,6);
+    document.getElementById('weekRange').textContent = fmtShort(start) + ' 〜 ' + fmtShort(end);
+    renderSyncRow();
+  }
+  function renderSyncRow(){
+    var dot = document.getElementById('syncDot');
+    var text = document.getElementById('syncText');
+    dot.className = 'sync-dot' + (state.syncError ? ' err' : '');
+    if(state.syncError){
+      text.textContent = '同期エラー';
+    } else if(state.loading){
+      text.textContent = '同期中…';
+    } else if(state.lastSync){
+      var h = String(state.lastSync.getHours()).padStart(2,'0');
+      var m = String(state.lastSync.getMinutes()).padStart(2,'0');
+      text.textContent = '最終更新 ' + h + ':' + m;
+    } else {
+      text.textContent = '-';
+    }
+  }
+
+  // ---------- render: plan view ----------
+  function renderLoadError(){
+    var box = document.getElementById('loadErrorBox');
+    if(state.loadError){
+      box.innerHTML = '<div class="load-error-banner">' + esc(state.loadError) +
+        '<br><button id="retryLoadBtn">再試行する</button></div>';
+    } else {
+      box.innerHTML = '';
+    }
+  }
+
+  function renderDayList(){
+    var list = document.getElementById('dayList');
+    if(state.loading){
+      list.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>';
+      return;
+    }
+    var today = new Date(); today.setHours(0,0,0,0);
+    var html = '';
+    for(var i=0;i<7;i++){
+      var d = addDays(state.weekStart, i);
+      var key = fmtKey(d);
+      var entry = state.plan[key];
+      var hasMeal = entry && entry.meal;
+      var isToday = isSameDate(d, today);
+      html += '<li class="day-card ' + (hasMeal ? 'filled' : 'empty') + (isToday ? ' is-today' : '') + '" data-date="' + key + '">';
+      html += '<span class="magnet magnet-' + (i % 4) + '"></span>';
+      html += '<div class="day-card-head"><span class="dow">' + DOW[i] + '</span><span class="date-num">' + fmtShort(d) + '</span>';
+      if(isToday) html += '<span class="today-badge">今日</span>';
+      html += '</div>';
+      html += '<div class="day-card-body">';
+      if(hasMeal){
+        html += '<p class="meal-name">' + esc(entry.meal) + '</p>';
+        if(entry.tag){
+          html += '<span class="tag-chip ' + tagChipColorClassName(entry.tag) + '">' + esc(entry.tag) + '</span>';
+        }
+      } else {
+        html += '<p class="empty-invite">まだ決まっていません<br><span class="empty-cta">タップして決める →</span></p>';
+      }
+      html += '</div></li>';
+    }
+    list.innerHTML = html;
+  }
+
+  // ---------- render: fridge view ----------
+  function renderFridgeList(){
+    var list = document.getElementById('fridgeList');
+    if(state.fridge.length === 0){
+      list.innerHTML = '<li><div class="fridge-empty">食材はまだ空っぽです。<br>買ったものを入力してみましょう。</div></li>';
+      return;
+    }
+    var html = '';
+    state.fridge.forEach(function(item, i){
+      html += '<li class="fridge-item"><span class="fridge-dot"></span><span class="fridge-name">' + esc(item) +
+        '</span><button class="fridge-remove" data-index="' + i + '" aria-label="' + esc(item) + 'を削除">✕</button></li>';
+    });
+    list.innerHTML = html;
+  }
+
+  // ---------- render: sheet ----------
+  function openSheet(dateKey){
+    state.openDateKey = dateKey;
+    state.suggestResults = [];
+    state.suggestError = null;
+    var d = new Date(dateKey + 'T00:00:00');
+    var idx = (d.getDay()+6)%7;
+    document.getElementById('sheetTitle').textContent = DOW[idx] + '曜日 ' + fmtShort(d);
+    var entry = state.plan[dateKey];
+    document.getElementById('directMealInput').value = entry ? entry.meal : '';
+    renderTagChips();
+    renderSuggestArea();
+    document.getElementById('sheetOverlay').classList.remove('hidden');
+  }
+  function closeSheet(){
+    document.getElementById('sheetOverlay').classList.add('hidden');
+    state.openDateKey = null;
+  }
+
+  function renderTagChips(){
+    var box = document.getElementById('tagChips');
+    var html = '';
+    TAGS.forEach(function(t){
+      html += '<button class="tag-chip-btn' + (state.selectedTag===t.key ? ' active' : '') + '" data-tag="' + esc(t.key) + '">' + esc(t.key) + '</button>';
+    });
+    box.innerHTML = html;
+  }
+
+  function renderSuggestArea(){
+    var area = document.getElementById('suggestArea');
+    var btn = document.getElementById('suggestBtn');
+    btn.disabled = state.suggestLoading;
+    btn.textContent = state.suggestLoading ? '考えています…' : 'この条件で提案を見る';
+
+    var html = '';
+    if(state.suggestLoading){
+      html += '<div class="suggest-status">献立を考えています…</div>';
+    }
+    if(state.suggestError){
+      html += '<div class="suggest-error">' + esc(state.suggestError) + '</div>';
+    }
+    if(!state.suggestLoading && state.suggestResults.length){
+      html += '<div class="suggest-results">';
+      state.suggestResults.forEach(function(s, i){
+        var ing = Array.isArray(s.mainIngredients) ? s.mainIngredients.join('・') : '';
+        html += '<div class="suggest-card" data-idx="' + i + '">';
+        html += '<p class="suggest-card-name">' + esc(s.name||'') + '</p>';
+        if(s.description) html += '<p class="suggest-card-desc">' + esc(s.description) + '</p>';
+        if(ing) html += '<p class="suggest-card-ing">使う食材: ' + esc(ing) + '</p>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    area.innerHTML = html;
+  }
+
+  // ---------- top-level render ----------
+  function render(){
+    renderHeader();
+    renderLoadError();
+    renderDayList();
+    renderFridgeList();
+  }
+
+  // ---------- events (delegation) ----------
+  document.getElementById('prevWeek').addEventListener('click', function(){
+    state.weekStart = addDays(state.weekStart, -7); render();
+  });
+  document.getElementById('nextWeek').addEventListener('click', function(){
+    state.weekStart = addDays(state.weekStart, 7); render();
+  });
+  document.getElementById('todayBtn').addEventListener('click', function(){
+    state.weekStart = getMonday(new Date()); render();
+  });
+  document.getElementById('refreshBtn').addEventListener('click', loadAll);
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      var view = btn.getAttribute('data-view');
+      state.activeView = view;
+      document.getElementById('planView').classList.toggle('hidden', view!=='plan');
+      document.getElementById('fridgeView').classList.toggle('hidden', view!=='fridge');
+    });
+  });
+
+  document.getElementById('dayList').addEventListener('click', function(e){
+    var card = e.target.closest('.day-card');
+    if(card) openSheet(card.getAttribute('data-date'));
+  });
+
+  document.getElementById('loadErrorBox').addEventListener('click', function(e){
+    if(e.target.id === 'retryLoadBtn') loadAll();
+  });
+
+  document.getElementById('sheetCloseBtn').addEventListener('click', closeSheet);
+  document.getElementById('sheetOverlay').addEventListener('click', function(e){
+    if(e.target.id === 'sheetOverlay') closeSheet();
+  });
+
+  document.getElementById('directSaveBtn').addEventListener('click', function(){
+    var val = document.getElementById('directMealInput').value.trim();
+    if(!val) return;
+    saveMeal(state.openDateKey, val, '');
+    closeSheet();
+  });
+  document.getElementById('directMealInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') document.getElementById('directSaveBtn').click();
+  });
+
+  document.getElementById('tagChips').addEventListener('click', function(e){
+    var btn = e.target.closest('.tag-chip-btn');
+    if(!btn) return;
+    state.selectedTag = btn.getAttribute('data-tag');
+    renderTagChips();
+  });
+
+  document.getElementById('suggestBtn').addEventListener('click', fetchSuggestions);
+
+  document.getElementById('suggestArea').addEventListener('click', function(e){
+    var card = e.target.closest('.suggest-card');
+    if(card) selectSuggestion(parseInt(card.getAttribute('data-idx'),10));
+  });
+
+  document.getElementById('fridgeAddBtn').addEventListener('click', addFridgeItem);
+  document.getElementById('fridgeInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') addFridgeItem();
+  });
+  function addFridgeItem(){
+    var input = document.getElementById('fridgeInput');
+    var val = input.value.trim();
+    if(!val) return;
+    state.fridge.push(val);
+    input.value = '';
+    saveFridge();
+  }
+
+  document.getElementById('fridgeList').addEventListener('click', function(e){
+    var btn = e.target.closest('.fridge-remove');
+    if(!btn) return;
+    var idx = parseInt(btn.getAttribute('data-index'),10);
+    state.fridge.splice(idx,1);
+    saveFridge();
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') loadAll();
+  });
+
+  // ---------- init ----------
+  render();
+  loadAll();
+})();
+</script>
+</body>
+</html>
