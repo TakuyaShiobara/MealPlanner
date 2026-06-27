@@ -158,12 +158,12 @@
   .fridge-intro{ font-size:13px; color:var(--ink-soft); margin:6px 2px 14px; line-height:1.6; }
   .fridge-add{ display:flex; gap:8px; margin-bottom:14px; }
   .fridge-add input{
-    flex:1; border:1.6px solid var(--line); border-radius:10px; padding:11px 13px;
+    flex:1 1 auto; min-width:0; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
     font-size:15px; background:var(--paper);
   }
   .btn-primary{
     border:none; background:var(--herb); color:#fff; font-weight:700; font-size:14px;
-    border-radius:10px; padding:0 18px; cursor:pointer;
+    border-radius:10px; padding:0 16px; cursor:pointer; flex-shrink:0; white-space:nowrap;
   }
   .btn-primary:active{ background:var(--herb-deep); }
   .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
@@ -225,7 +225,7 @@
   .block-label{ margin:0 0 10px; font-size:13.5px; font-weight:700; color:var(--ink); }
   .input-row{ display:flex; gap:8px; }
   .input-row input{
-    flex:1; border:1.6px solid var(--line); border-radius:10px; padding:11px 13px;
+    flex:1 1 auto; min-width:0; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
     font-size:15px; background:#fff;
   }
 
