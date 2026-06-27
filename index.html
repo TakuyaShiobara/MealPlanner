@@ -245,10 +245,11 @@
   .sheet-divider{ display:flex; align-items:center; gap:10px; margin:6px 0 14px; color:var(--ink-soft); font-size:12px; }
   .sheet-divider::before, .sheet-divider::after{ content:""; flex:1; height:1px; background:var(--line); }
 
-  .tag-chips{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px; }
+  .tag-chips{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:12px; }
   .tag-chip-btn{
-    border:1.6px solid var(--line); background:#fff; border-radius:20px; padding:6px 13px;
-    font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    border:1.6px solid var(--line); background:#fff; border-radius:20px; padding:7px 4px;
+    font-size:11.5px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .tag-chip-btn.active{ background:var(--herb); border-color:var(--herb); color:#fff; }
 
@@ -330,7 +331,7 @@
         <button id="clearMealBtn" class="clear-link hidden">未定に戻す</button>
       </div>
       <div class="input-row">
-        <input id="directMealInput" placeholder="例：カレー" />
+        <input id="directMealInput" placeholder="例：麻婆豆腐" />
         <button id="directSaveBtn" class="btn-primary">保存</button>
       </div>
     </div>
@@ -360,18 +361,18 @@
   var GAS_URL = "https://script.google.com/macros/s/AKfycbxY7V5aCfwvIh7mW8oVftGeyP5AQr80pazpjxzCEfQLg5hRb3dccznVWeJBeVrweXB_/exec";
   var DOW = ['月','火','水','木','金','土','日'];
   var TAGS = [
-    {key:'ヘルシー', color:'blueberry'},
+    {key:'ヘルシー', color:'herb'},
     {key:'肉料理', color:'brick'},
-    {key:'魚料理', color:'herb'},
-    {key:'スープ料理', color:'yolk'},
+    {key:'魚料理', color:'blueberry'},
+    {key:'スープ', color:'yolk'},
     {key:'和食', color:'ink-soft'},
-    {key:'洋食', color:'blueberry'},
+    {key:'洋食', color:'herb'},
     {key:'中華', color:'brick'},
-    {key:'イタリアン', color:'herb'},
-    {key:'時短', color:'yolk'},
-    {key:'定番', color:'ink-soft'}
-    {key:'節約', color:'blueberry'},
-    {key:'冷蔵庫食材だけ', color:'brick'},
+    {key:'イタリアン', color:'blueberry'},
+    {key:'定番', color:'yolk'},
+    {key:'節約', color:'ink-soft'},
+    {key:'冷蔵庫消費重視', color:'herb'},
+    {key:'その他', color:'brick'}
   ];
 
   var state = {
