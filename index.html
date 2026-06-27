@@ -398,6 +398,7 @@
       var cbName = 'jsonp_cb_' + (jsonpCounter++) + '_' + Date.now();
       var script = document.createElement('script');
       var timeoutId = setTimeout(function(){
+        console.error('[jsonp] TIMEOUT (12秒応答なし):', script.src);
         cleanup();
         reject(new Error('timeout'));
       }, 12000);
@@ -409,6 +410,7 @@
       }
 
       window[cbName] = function(data){
+        console.log('[jsonp] SUCCESS:', data);
         cleanup();
         resolve(data);
       };
@@ -418,8 +420,14 @@
       }).join('&');
 
       script.src = GAS_URL + '?' + qs + '&callback=' + cbName;
-      script.onerror = function(){ cleanup(); reject(new Error('script load error')); };
+      console.log('[jsonp] REQUESTING:', script.src);
+      script.onerror = function(ev){
+        console.error('[jsonp] SCRIPT LOAD ERROR for url:', script.src, 'event:', ev);
+        cleanup();
+        reject(new Error('script load error'));
+      };
       document.body.appendChild(script);
+
     });
   }
 
