@@ -331,7 +331,7 @@
         <button id="clearMealBtn" class="clear-link hidden">未定に戻す</button>
       </div>
       <div class="input-row">
-        <input id="directMealInput" placeholder="例：カレー" />
+        <input id="directMealInput" placeholder="例：麻婆豆腐" />
         <button id="directSaveBtn" class="btn-primary">保存</button>
       </div>
     </div>
@@ -347,18 +347,55 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>
-  if (location.search.indexOf('debug=1') !== -1) {
-    eruda.init();
-  }
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDsqyclocK99Hx5v_NdqXOTttPXczr5s-8",
+    authDomain: "meal-planner-6ed7c.firebaseapp.com",
+    databaseURL: "https://meal-planner-6ed7c-default-rtdb.firebaseio.com",
+    projectId: "meal-planner-6ed7c",
+    storageBucket: "meal-planner-6ed7c.firebasestorage.app",
+    messagingSenderId: "1000777457654",
+    appId: "1:1000777457654:web:4d15dbde8e29d1eefc31d7"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Firebaseのデータ操作関数をグローバルに公開
+  window._fb = {
+    saveMeal: function(dateKey, meal, tag) {
+      return set(ref(db, 'plan/' + dateKey), { meal: meal || '', tag: tag || '' });
+    },
+    saveFridge: function(items) {
+      return set(ref(db, 'fridge'), items);
+    },
+    listenAll: function(callback) {
+      // planとfridgeをリアルタイム監視
+      onValue(ref(db, '/'), function(snapshot) {
+        var data = snapshot.val() || {};
+        callback({
+          plan: data.plan || {},
+          fridge: Array.isArray(data.fridge) ? data.fridge : []
+        });
+      }, function(err) {
+        callback(null, err);
+      });
+    }
+  };
+
+  // 準備完了を通知
+  window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
 <script>
 (function(){
   "use strict";
 
-  var GAS_URL = "https://script.google.com/macros/s/AKfycbxY7V5aCfwvIh7mW8oVftGeyP5AQr80pazpjxzCEfQLg5hRb3dccznVWeJBeVrweXB_/exec";
+  var GAS_SUGGEST_URL = "https://script.google.com/macros/s/AKfycbxY7V5aCfwvIh7mW8oVftGeyP5AQr80pazpjxzCEfQLg5hRb3dccznVWeJBeVrweXB_/exec";
   var DOW = ['月','火','水','木','金','土','日'];
   var TAGS = [
     {key:'ヘルシー', color:'herb'},
@@ -371,7 +408,7 @@
     {key:'イタリアン', color:'blueberry'},
     {key:'定番', color:'yolk'},
     {key:'節約', color:'ink-soft'},
-    {key:'冷蔵庫重視', color:'herb'},
+    {key:'冷蔵庫消費重視', color:'herb'},
     {key:'その他', color:'brick'}
   ];
 
@@ -420,90 +457,79 @@
     return 'c-' + tagColorClass(tag);
   }
 
-  // ---------- data layer (JSONP: avoids browser CORS blocking) ----------
-  var jsonpCounter = 0;
-  function jsonpRequest(params){
-    return new Promise(function(resolve, reject){
-      var cbName = 'jsonp_cb_' + (jsonpCounter++) + '_' + Date.now();
-      var script = document.createElement('script');
-      var timeoutId = setTimeout(function(){
-        console.error('[jsonp] TIMEOUT (12秒応答なし):', script.src);
-        cleanup();
-        reject(new Error('timeout'));
-      }, 12000);
-
-      function cleanup(){
-        clearTimeout(timeoutId);
-        delete window[cbName];
-        if(script.parentNode) script.parentNode.removeChild(script);
-      }
-
-      window[cbName] = function(data){
-        console.log('[jsonp] SUCCESS:', data);
-        cleanup();
-        resolve(data);
-      };
-
-      var qs = Object.keys(params).map(function(k){
-        return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
-      }).join('&');
-
-      script.src = GAS_URL + '?' + qs + '&callback=' + cbName;
-      console.log('[jsonp] REQUESTING:', script.src);
-      script.onerror = function(ev){
-        console.error('[jsonp] SCRIPT LOAD ERROR for url:', script.src, 'event:', ev);
-        cleanup();
-        reject(new Error('script load error'));
-      };
-      document.body.appendChild(script);
-
+  // ---------- data layer (Firebase Realtime Database) ----------
+  function waitForFirebase(){
+    return new Promise(function(resolve){
+      if(window._fb){ resolve(); return; }
+      window.addEventListener('firebase-ready', resolve, {once: true});
     });
   }
 
   function loadAll(){
     state.loading = true; state.loadError = null;
     render();
-    jsonpRequest({action:'getAll'})
-      .then(function(data){
+    waitForFirebase().then(function(){
+      window._fb.listenAll(function(data, err){
+        if(err || !data){
+          state.loadError = 'データを読み込めませんでした。通信状況を確認して、もう一度お試しください。';
+          state.syncError = true;
+          state.loading = false;
+          render();
+          return;
+        }
         state.plan = data.plan || {};
-        state.fridge = data.fridge || [];
+        state.fridge = Array.isArray(data.fridge) ? data.fridge : [];
         state.lastSync = new Date();
         state.syncError = false;
-      })
-      .catch(function(){
-        state.loadError = 'データを読み込めませんでした。通信状況を確認して、もう一度お試しください。';
-        state.syncError = true;
-      })
-      .then(function(){
         state.loading = false;
         render();
       });
-  }
-
-  function postAction(params){
-    return jsonpRequest(params).then(function(data){
-      state.lastSync = new Date();
-      state.syncError = false;
-      return data;
-    }).catch(function(err){
-      state.syncError = true;
-      renderSyncRow();
-      throw err;
     });
   }
 
   function saveMeal(dateKey, meal, tag){
-    state.plan[dateKey] = {meal: meal, tag: tag || ''};
+    state.plan[dateKey] = {meal: meal || '', tag: tag || ''};
     render();
-    postAction({action:'setMeal', date: dateKey, meal: meal, tag: tag || ''}).catch(function(){});
+    waitForFirebase().then(function(){
+      window._fb.saveMeal(dateKey, meal, tag).catch(function(){
+        state.syncError = true;
+        renderSyncRow();
+      });
+    });
   }
 
   function saveFridge(){
     renderFridgeList();
-    postAction({action:'setFridge', items: JSON.stringify(state.fridge)}).catch(function(){});
+    waitForFirebase().then(function(){
+      window._fb.saveFridge(state.fridge).catch(function(){
+        state.syncError = true;
+        renderSyncRow();
+      });
+    });
   }
 
-  // ---------- AI suggestion (via Apps Script, which calls Gemini securely) ----------
+  // ---------- JSONP（AI提案専用：GAS経由でGeminiを呼ぶ）----------
+  var _jsonpCount = 0;
+  function jsonpRequest(params){
+    return new Promise(function(resolve, reject){
+      var cbName = 'suggest_cb_' + (_jsonpCount++) + '_' + Date.now();
+      var script = document.createElement('script');
+      var tid = setTimeout(function(){ cleanup(); reject(new Error('timeout')); }, 20000);
+      function cleanup(){
+        clearTimeout(tid); delete window[cbName];
+        if(script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[cbName] = function(data){ cleanup(); resolve(data); };
+      var qs = Object.keys(params).map(function(k){
+        return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
+      }).join('&');
+      script.src = GAS_SUGGEST_URL + '?' + qs + '&callback=' + cbName;
+      script.onerror = function(){ cleanup(); reject(new Error('load error')); };
+      document.body.appendChild(script);
+    });
+  }
+
+  // ---------- AI suggestion ----------
   function fetchSuggestions(isMore){
     state.suggestLoading = true; state.suggestError = null;
     if(!isMore) state.suggestResults = [];
@@ -780,11 +806,8 @@
     saveFridge();
   });
 
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState === 'visible') loadAll();
-  });
-
   // ---------- init ----------
+  // Firebaseはリアルタイム監視なのでvisibilitychangeの再読み込みは不要
   render();
   loadAll();
 })();
