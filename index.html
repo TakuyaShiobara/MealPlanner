@@ -245,11 +245,11 @@
   .sheet-divider{ display:flex; align-items:center; gap:10px; margin:6px 0 14px; color:var(--ink-soft); font-size:12px; }
   .sheet-divider::before, .sheet-divider::after{ content:""; flex:1; height:1px; background:var(--line); }
 
-  .tag-chips{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:12px; }
+  .tag-chips{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-bottom:12px; }
   .tag-chip-btn{
-    border:1.6px solid var(--line); background:#fff; border-radius:20px; padding:7px 4px;
-    font-size:11.5px; font-weight:700; color:var(--ink-soft); cursor:pointer;
-    text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    border:1.6px solid var(--line); background:#fff; border-radius:20px; padding:7px 2px;
+    font-size:10px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    text-align:center; word-break:keep-all; overflow-wrap:break-word; line-height:1.3;
   }
   .tag-chip-btn.active{ background:var(--herb); border-color:var(--herb); color:#fff; }
 
