@@ -174,20 +174,20 @@
   .btn-primary:active{ background:var(--herb-deep); }
   .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
 
-  .fridge-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .fridge-list{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .fridge-item{
-    display:flex; align-items:center; gap:10px; background:var(--paper);
-    border-radius:12px; padding:10px 12px; box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:7px; background:var(--paper);
+    border-radius:10px; padding:8px 10px; box-shadow:var(--shadow); min-width:0;
   }
-  .fridge-dot{ width:8px; height:8px; border-radius:50%; background:var(--herb); flex-shrink:0; }
-  .fridge-name{ flex:1; font-size:14.5px; }
+  .fridge-dot{ width:6px; height:6px; border-radius:50%; background:var(--herb); flex-shrink:0; }
+  .fridge-name{ flex:1; font-size:12.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .fridge-remove{
-    border:none; background:none; color:var(--ink-soft); font-size:15px; cursor:pointer;
-    width:28px; height:28px; border-radius:50%;
+    border:none; background:none; color:var(--ink-soft); font-size:13px; cursor:pointer;
+    width:22px; height:22px; border-radius:50%; flex-shrink:0; padding:0;
   }
   .fridge-remove:active{ background:#eef1ef; }
   .fridge-empty{
-    text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px;
+    grid-column:1/-1; text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px;
     border:1.6px dashed var(--dash); border-radius:14px; line-height:1.7;
   }
 
@@ -304,7 +304,6 @@
   </main>
 
   <main id="fridgeView" class="view hidden">
-    <p class="fridge-intro">ここに入れた食材を使って、AIが献立を提案します。買ったものや残っているものを入れておきましょう。</p>
     <div class="fridge-add">
       <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
       <button id="fridgeAddBtn" class="btn-primary">追加</button>
