@@ -162,7 +162,7 @@
 
   /* ---------- Fridge view ---------- */
   .fridge-intro{ font-size:13px; color:var(--ink-soft); margin:6px 2px 14px; line-height:1.6; }
-  .fridge-add{ display:flex; gap:8px; margin-bottom:14px; }
+  .fridge-add{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
   .fridge-add input{
     flex:1 1 auto; min-width:0; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
     font-size:16px; background:var(--paper);
@@ -174,13 +174,38 @@
   .btn-primary:active{ background:var(--herb-deep); }
   .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
 
+  .fridge-expiry-input{
+    width:100%; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
+    font-size:13px; background:var(--paper); color:var(--ink-soft); margin-bottom:12px; box-sizing:border-box;
+  }
+  .fridge-expiry-input.hidden{ display:none; }
+  .fridge-expiry-toggle{
+    display:flex; align-items:center; gap:6px; border:none; background:none; padding:0 2px;
+    font-size:12px; color:var(--ink-soft); cursor:pointer; margin-bottom:10px;
+  }
+  .fridge-expiry-toggle .icon{ font-size:13px; }
+  .fridge-expiry-toggle.active{ color:var(--herb-deep); font-weight:700; }
+  .fridge-cat-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .fridge-add-cat-chips{ margin-bottom:8px; }
+  .fridge-cat-chip-btn{
+    border:1.6px solid var(--line); background:#fff; border-radius:20px; padding:6px 12px;
+    font-size:11.5px; font-weight:700; color:var(--ink-soft); cursor:pointer; flex-shrink:0;
+  }
+  .fridge-cat-chip-btn.active{ background:var(--herb); border-color:var(--herb); color:#fff; }
   .fridge-list{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .fridge-item{
     display:flex; align-items:center; gap:7px; background:var(--paper);
     border-radius:10px; padding:8px 10px; box-shadow:var(--shadow); min-width:0;
   }
   .fridge-dot{ width:6px; height:6px; border-radius:50%; background:var(--herb); flex-shrink:0; }
-  .fridge-name{ flex:1; font-size:12.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fridge-dot.is-warn{ background:var(--yolk); }
+  .fridge-dot.is-expired{ background:var(--brick); }
+  .fridge-main{ flex:1; min-width:0; }
+  .fridge-name{ display:block; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fridge-item .tag-chip{ font-size:9.5px; padding:1px 7px; margin-top:2px; display:inline-block; }
+  .fridge-expiry{ font-size:10.5px; color:var(--ink-soft); margin-top:1px; }
+  .fridge-expiry.is-warn{ color:var(--yolk); }
+  .fridge-expiry.is-expired{ color:var(--brick); font-weight:700; }
   .fridge-remove{
     border:none; background:none; color:var(--ink-soft); font-size:13px; cursor:pointer;
     width:22px; height:22px; border-radius:50%; flex-shrink:0; padding:0;
@@ -308,12 +333,18 @@
       <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
       <button id="fridgeAddBtn" class="btn-primary">追加</button>
     </div>
+    <div id="fridgeAddCatChips" class="fridge-cat-chips fridge-add-cat-chips"></div>
+    <button id="fridgeExpiryToggle" class="fridge-expiry-toggle" type="button">
+      <span class="icon">📅</span><span id="fridgeExpiryToggleLabel">賞味期限を設定（任意）</span>
+    </button>
+    <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
+    <div id="fridgeCatChips" class="fridge-cat-chips"></div>
     <ul id="fridgeList" class="fridge-list"></ul>
   </main>
 
   <nav class="tabbar">
     <button class="tab-btn active" data-view="plan"><span class="icon">📋</span>今週の献立</button>
-    <button class="tab-btn" data-view="fridge"><span class="icon">🧊</span>冷蔵庫</button>
+    <button class="tab-btn" data-view="fridge"><span class="icon">🥕</span>食材</button>
   </nav>
 </div>
 
@@ -410,6 +441,15 @@
     {key:'冷蔵庫消費重視', color:'herb'},
     {key:'その他', color:'brick'}
   ];
+  var FRIDGE_CATEGORIES = [
+    {key:'野菜', color:'herb'},
+    {key:'肉・魚', color:'brick'},
+    {key:'麺・米', color:'yolk'},
+    {key:'乳製品・卵', color:'blueberry'},
+    {key:'調味料', color:'ink-soft'},
+    {key:'その他', color:'ink-soft'}
+  ];
+  var FRIDGE_CATEGORY_ALL = 'すべて';
 
   var state = {
     weekStart: getMonday(new Date()),
@@ -421,6 +461,9 @@
     syncError: false,
     activeView: 'plan',
     openDateKey: null,
+    fridgeCategoryFilter: FRIDGE_CATEGORY_ALL,
+    fridgeAddCategory: 'その他',
+    fridgeExpiryOpen: false,
     selectedTag: 'ヘルシー',
     suggestLoading: false,
     suggestResults: [],
@@ -448,6 +491,28 @@
   function fmtShort(d){ return (d.getMonth()+1)+'/'+d.getDate(); }
   function addDays(d,n){ var r=new Date(d); r.setDate(r.getDate()+n); return r; }
   function isSameDate(a,b){ return fmtKey(a)===fmtKey(b); }
+  function normalizeFridge(arr){
+    if(!Array.isArray(arr)) return [];
+    return arr.map(function(item){
+      if(item && typeof item === 'object') return {
+        name: item.name || '',
+        expiry: item.expiry || '',
+        category: item.category || 'その他'
+      };
+      return {name: String(item==null ? '' : item), expiry: '', category: 'その他'};
+    }).filter(function(item){ return item.name; });
+  }
+  function fridgeCategoryColorClass(category){
+    var f = FRIDGE_CATEGORIES.filter(function(c){return c.key===category;})[0];
+    return f ? f.color : 'ink-soft';
+  }
+  function expiryDaysLeft(expiry){
+    if(!expiry) return null;
+    var target = new Date(expiry + 'T00:00:00');
+    if(isNaN(target.getTime())) return null;
+    var today = new Date(); today.setHours(0,0,0,0);
+    return Math.round((target - today) / 86400000);
+  }
   function tagColorClass(tag){
     var f = TAGS.filter(function(t){return t.key===tag;})[0];
     return f ? f.color : 'ink-soft';
@@ -477,7 +542,7 @@
           return;
         }
         state.plan = data.plan || {};
-        state.fridge = Array.isArray(data.fridge) ? data.fridge : [];
+        state.fridge = normalizeFridge(data.fridge);
         state.lastSync = new Date();
         state.syncError = false;
         state.loading = false;
@@ -538,7 +603,7 @@
 
     jsonpRequest({
       action: 'suggest',
-      fridge: JSON.stringify(state.fridge),
+      fridge: JSON.stringify(state.fridge.map(function(item){ return item.name; })),
       tag: state.selectedTag,
       exclude: JSON.stringify(excludeNames)
     })
@@ -637,16 +702,63 @@
   }
 
   // ---------- render: fridge view ----------
+  function renderFridgeAddCatChips(){
+    var box = document.getElementById('fridgeAddCatChips');
+    box.innerHTML = FRIDGE_CATEGORIES.map(function(c){
+      return '<button class="fridge-cat-chip-btn' + (state.fridgeAddCategory===c.key ? ' active' : '') +
+        '" data-category="' + esc(c.key) + '">' + esc(c.key) + '</button>';
+    }).join('');
+  }
+  function renderFridgeCatChips(){
+    var box = document.getElementById('fridgeCatChips');
+    var all = [FRIDGE_CATEGORY_ALL].concat(FRIDGE_CATEGORIES.map(function(c){ return c.key; }));
+    box.innerHTML = all.map(function(key){
+      return '<button class="fridge-cat-chip-btn' + (state.fridgeCategoryFilter===key ? ' active' : '') +
+        '" data-category="' + esc(key) + '">' + esc(key) + '</button>';
+    }).join('');
+  }
   function renderFridgeList(){
     var list = document.getElementById('fridgeList');
+    var visible = state.fridge.filter(function(item){
+      return state.fridgeCategoryFilter === FRIDGE_CATEGORY_ALL || item.category === state.fridgeCategoryFilter;
+    });
     if(state.fridge.length === 0){
       list.innerHTML = '<li><div class="fridge-empty">食材はまだ空っぽです。<br>買ったものを入力してみましょう。</div></li>';
       return;
     }
+    if(visible.length === 0){
+      list.innerHTML = '<li><div class="fridge-empty">このカテゴリの食材はありません。</div></li>';
+      return;
+    }
+    var ordered = state.fridge.map(function(item, i){ return {item: item, index: i}; })
+      .filter(function(entry){
+        return state.fridgeCategoryFilter === FRIDGE_CATEGORY_ALL || entry.item.category === state.fridgeCategoryFilter;
+      });
+    ordered.sort(function(a, b){
+      var da = expiryDaysLeft(a.item.expiry), db = expiryDaysLeft(b.item.expiry);
+      if(da === null && db === null) return 0;
+      if(da === null) return 1;
+      if(db === null) return -1;
+      return da - db;
+    });
     var html = '';
-    state.fridge.forEach(function(item, i){
-      html += '<li class="fridge-item"><span class="fridge-dot"></span><span class="fridge-name">' + esc(item) +
-        '</span><button class="fridge-remove" data-index="' + i + '" aria-label="' + esc(item) + 'を削除">✕</button></li>';
+    ordered.forEach(function(entry){
+      var item = entry.item;
+      var daysLeft = expiryDaysLeft(item.expiry);
+      var urgency = '';
+      var expiryText = '';
+      if(daysLeft !== null){
+        if(daysLeft < 0){ urgency = 'is-expired'; expiryText = '期限切れ'; }
+        else if(daysLeft === 0){ urgency = 'is-expired'; expiryText = '今日まで'; }
+        else if(daysLeft <= 3){ urgency = 'is-warn'; expiryText = 'あと' + daysLeft + '日'; }
+        else { expiryText = item.expiry + 'まで'; }
+      }
+      html += '<li class="fridge-item"><span class="fridge-dot ' + urgency + '"></span>' +
+        '<span class="fridge-main"><span class="fridge-name">' + esc(item.name) + '</span>' +
+        '<span class="tag-chip c-' + fridgeCategoryColorClass(item.category) + '">' + esc(item.category) + '</span>' +
+        (expiryText ? '<div class="fridge-expiry ' + urgency + '">' + esc(expiryText) + '</div>' : '') +
+        '</span>' +
+        '<button class="fridge-remove" data-index="' + entry.index + '" aria-label="' + esc(item.name) + 'を削除">✕</button></li>';
     });
     list.innerHTML = html;
   }
@@ -714,6 +826,8 @@
     renderHeader();
     renderLoadError();
     renderDayList();
+    renderFridgeAddCatChips();
+    renderFridgeCatChips();
     renderFridgeList();
   }
 
@@ -790,11 +904,37 @@
   });
   function addFridgeItem(){
     var input = document.getElementById('fridgeInput');
+    var expiryInput = document.getElementById('fridgeExpiryInput');
     var val = input.value.trim();
     if(!val) return;
-    state.fridge.push(val);
+    state.fridge.push({name: val, expiry: expiryInput.value || '', category: state.fridgeAddCategory});
     input.value = '';
+    expiryInput.value = '';
+    state.fridgeExpiryOpen = false;
+    renderFridgeExpiryToggle();
     saveFridge();
+  }
+
+  document.getElementById('fridgeAddCatChips').addEventListener('click', function(e){
+    var btn = e.target.closest('.fridge-cat-chip-btn');
+    if(!btn) return;
+    state.fridgeAddCategory = btn.getAttribute('data-category');
+    renderFridgeAddCatChips();
+  });
+
+  document.getElementById('fridgeExpiryToggle').addEventListener('click', function(){
+    state.fridgeExpiryOpen = !state.fridgeExpiryOpen;
+    if(!state.fridgeExpiryOpen) document.getElementById('fridgeExpiryInput').value = '';
+    renderFridgeExpiryToggle();
+    if(state.fridgeExpiryOpen) document.getElementById('fridgeExpiryInput').focus();
+  });
+  function renderFridgeExpiryToggle(){
+    var toggle = document.getElementById('fridgeExpiryToggle');
+    var label = document.getElementById('fridgeExpiryToggleLabel');
+    var input = document.getElementById('fridgeExpiryInput');
+    toggle.classList.toggle('active', state.fridgeExpiryOpen);
+    input.classList.toggle('hidden', !state.fridgeExpiryOpen);
+    label.textContent = state.fridgeExpiryOpen ? '賞味期限を設定しない' : '賞味期限を設定（任意）';
   }
 
   document.getElementById('fridgeList').addEventListener('click', function(e){
@@ -805,8 +945,17 @@
     saveFridge();
   });
 
+  document.getElementById('fridgeCatChips').addEventListener('click', function(e){
+    var btn = e.target.closest('.fridge-cat-chip-btn');
+    if(!btn) return;
+    state.fridgeCategoryFilter = btn.getAttribute('data-category');
+    renderFridgeCatChips();
+    renderFridgeList();
+  });
+
   // ---------- init ----------
   // Firebaseはリアルタイム監視なのでvisibilitychangeの再読み込みは不要
+  renderFridgeExpiryToggle();
   render();
   loadAll();
 })();
