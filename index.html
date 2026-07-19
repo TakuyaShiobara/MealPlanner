@@ -162,17 +162,21 @@
 
   /* ---------- Fridge view ---------- */
   .fridge-intro{ font-size:13px; color:var(--ink-soft); margin:6px 2px 14px; line-height:1.6; }
-  .fridge-add{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
-  .fridge-add input{
-    flex:1 1 auto; min-width:0; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
-    font-size:16px; background:var(--paper);
-  }
   .btn-primary{
     border:none; background:var(--herb); color:#fff; font-weight:700; font-size:14px;
     border-radius:10px; padding:0 16px; cursor:pointer; flex-shrink:0; white-space:nowrap;
   }
   .btn-primary:active{ background:var(--herb-deep); }
   .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
+
+  .fridge-toolbar{ margin-bottom:12px; }
+  .fridge-open-add-btn{ width:100%; padding:13px 0; font-size:14.5px; }
+  .fridge-name-input{
+    width:100%; box-sizing:border-box; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
+    font-size:16px; background:#fff; margin-bottom:14px;
+  }
+  .fridge-add-section-label{ margin-bottom:8px; }
+  .fridge-add-confirm-btn{ width:100%; padding:12px 0; font-size:14.5px; margin-top:4px; }
 
   .fridge-expiry-input{
     width:100%; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
@@ -329,15 +333,9 @@
   </main>
 
   <main id="fridgeView" class="view hidden">
-    <div class="fridge-add">
-      <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
-      <button id="fridgeAddBtn" class="btn-primary">追加</button>
+    <div class="fridge-toolbar">
+      <button id="fridgeOpenAddBtn" class="btn-primary fridge-open-add-btn" type="button">＋ 食材を追加</button>
     </div>
-    <div id="fridgeAddCatChips" class="fridge-cat-chips fridge-add-cat-chips"></div>
-    <button id="fridgeExpiryToggle" class="fridge-expiry-toggle" type="button">
-      <span class="icon">📅</span><span id="fridgeExpiryToggleLabel">賞味期限を設定（任意）</span>
-    </button>
-    <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
     <div id="fridgeCatChips" class="fridge-cat-chips"></div>
     <ul id="fridgeList" class="fridge-list"></ul>
   </main>
@@ -373,6 +371,29 @@
       <div class="tag-chips" id="tagChips"></div>
       <button id="suggestBtn" class="suggest-btn">この条件で提案を見る</button>
       <div id="suggestArea"></div>
+    </div>
+  </div>
+</div>
+
+<div id="fridgeAddSheetOverlay" class="sheet-overlay hidden">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fridgeAddSheetTitle">
+    <div class="sheet-header">
+      <h2 id="fridgeAddSheetTitle">食材を追加</h2>
+      <button class="sheet-close" id="fridgeAddSheetCloseBtn" aria-label="閉じる">✕</button>
+    </div>
+
+    <div class="block-card">
+      <input id="fridgeInput" class="fridge-name-input" placeholder="食材を入力（例：鶏むね肉）" />
+
+      <p class="block-label fridge-add-section-label">カテゴリ</p>
+      <div id="fridgeAddCatChips" class="fridge-cat-chips fridge-add-cat-chips"></div>
+
+      <button id="fridgeExpiryToggle" class="fridge-expiry-toggle" type="button">
+        <span class="icon">📅</span><span id="fridgeExpiryToggleLabel">賞味期限を設定（任意）</span>
+      </button>
+      <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
+
+      <button id="fridgeAddBtn" class="btn-primary fridge-add-confirm-btn">追加する</button>
     </div>
   </div>
 </div>
@@ -898,6 +919,23 @@
     if(e.target.id === 'moreSuggestBtn') fetchSuggestions(true);
   });
 
+  function openFridgeAddSheet(){
+    document.getElementById('fridgeInput').value = '';
+    document.getElementById('fridgeExpiryInput').value = '';
+    state.fridgeExpiryOpen = false;
+    renderFridgeExpiryToggle();
+    document.getElementById('fridgeAddSheetOverlay').classList.remove('hidden');
+    document.getElementById('fridgeInput').focus();
+  }
+  function closeFridgeAddSheet(){
+    document.getElementById('fridgeAddSheetOverlay').classList.add('hidden');
+  }
+  document.getElementById('fridgeOpenAddBtn').addEventListener('click', openFridgeAddSheet);
+  document.getElementById('fridgeAddSheetCloseBtn').addEventListener('click', closeFridgeAddSheet);
+  document.getElementById('fridgeAddSheetOverlay').addEventListener('click', function(e){
+    if(e.target.id === 'fridgeAddSheetOverlay') closeFridgeAddSheet();
+  });
+
   document.getElementById('fridgeAddBtn').addEventListener('click', addFridgeItem);
   document.getElementById('fridgeInput').addEventListener('keydown', function(e){
     if(e.key === 'Enter') addFridgeItem();
@@ -913,6 +951,7 @@
     state.fridgeExpiryOpen = false;
     renderFridgeExpiryToggle();
     saveFridge();
+    closeFridgeAddSheet();
   }
 
   document.getElementById('fridgeAddCatChips').addEventListener('click', function(e){
