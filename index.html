@@ -171,14 +171,14 @@
   .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
 
   .fridge-fab-wrap{
-    position:fixed; left:0; right:0; bottom:calc(78px + env(safe-area-inset-bottom));
+    position:fixed; left:0; right:0; bottom:calc(96px + env(safe-area-inset-bottom));
     max-width:480px; margin:0 auto; padding:0 14px; z-index:24;
   }
   .fridge-fab-wrap.hidden{ display:none; }
   .fridge-open-add-btn{
     width:100%; padding:13px 0; font-size:14.5px; box-shadow:var(--shadow);
   }
-  .fridge-add-section-label{ margin-top:16px; margin-bottom:8px; }
+  .fridge-add-section-label{ margin-top:0; margin-bottom:8px; }
   .fridge-added-toast{
     text-align:center; color:var(--herb-deep); font-size:12.5px; font-weight:700; margin:10px 0 0;
   }
@@ -392,11 +392,6 @@
     </div>
 
     <div class="block-card">
-      <div class="input-row">
-        <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
-        <button id="fridgeAddBtn" class="btn-primary">追加</button>
-      </div>
-
       <p class="block-label fridge-add-section-label">カテゴリ</p>
       <div id="fridgeAddCatChips" class="fridge-cat-chips fridge-add-cat-chips"></div>
 
@@ -404,6 +399,11 @@
         <span class="icon">📅</span><span id="fridgeExpiryToggleLabel">賞味期限を設定（任意）</span>
       </button>
       <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
+
+      <div class="input-row">
+        <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
+        <button id="fridgeAddBtn" class="btn-primary">追加</button>
+      </div>
       <p id="fridgeAddedToast" class="fridge-added-toast hidden">✓ 追加しました。続けて入力できます</p>
     </div>
   </div>
