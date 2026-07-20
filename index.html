@@ -177,6 +177,10 @@
   }
   .fridge-add-section-label{ margin-bottom:8px; }
   .fridge-add-confirm-btn{ width:100%; padding:12px 0; font-size:14.5px; margin-top:4px; }
+  .fridge-added-toast{
+    text-align:center; color:var(--herb-deep); font-size:12.5px; font-weight:700; margin:10px 0 0;
+  }
+  .fridge-added-toast.hidden{ display:none; }
 
   .fridge-expiry-input{
     width:100%; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
@@ -394,6 +398,7 @@
       <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
 
       <button id="fridgeAddBtn" class="btn-primary fridge-add-confirm-btn">追加する</button>
+      <p id="fridgeAddedToast" class="fridge-added-toast hidden">✓ 追加しました。続けて入力できます</p>
     </div>
   </div>
 </div>
@@ -595,6 +600,14 @@
 
   // ---------- JSONP（AI提案専用：GAS経由でGeminiを呼ぶ）----------
   var _jsonpCount = 0;
+  var _savedScrollY = 0;
+  function saveScrollPosition(){
+    _savedScrollY = window.scrollY || window.pageYOffset || 0;
+  }
+  function restoreScrollPosition(){
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    window.scrollTo(0, _savedScrollY);
+  }
   function jsonpRequest(params){
     return new Promise(function(resolve, reject){
       var cbName = 'suggest_cb_' + (_jsonpCount++) + '_' + Date.now();
@@ -786,6 +799,7 @@
 
   // ---------- render: sheet ----------
   function openSheet(dateKey){
+    saveScrollPosition();
     state.openDateKey = dateKey;
     state.suggestResults = [];
     state.suggestError = null;
@@ -802,6 +816,7 @@
   function closeSheet(){
     document.getElementById('sheetOverlay').classList.add('hidden');
     state.openDateKey = null;
+    restoreScrollPosition();
   }
 
   function renderTagChips(){
@@ -920,15 +935,25 @@
   });
 
   function openFridgeAddSheet(){
+    saveScrollPosition();
     document.getElementById('fridgeInput').value = '';
     document.getElementById('fridgeExpiryInput').value = '';
     state.fridgeExpiryOpen = false;
     renderFridgeExpiryToggle();
+    document.getElementById('fridgeAddedToast').classList.add('hidden');
     document.getElementById('fridgeAddSheetOverlay').classList.remove('hidden');
     document.getElementById('fridgeInput').focus();
   }
   function closeFridgeAddSheet(){
     document.getElementById('fridgeAddSheetOverlay').classList.add('hidden');
+    restoreScrollPosition();
+  }
+  var _fridgeToastTimer = null;
+  function showFridgeAddedToast(){
+    var toast = document.getElementById('fridgeAddedToast');
+    toast.classList.remove('hidden');
+    clearTimeout(_fridgeToastTimer);
+    _fridgeToastTimer = setTimeout(function(){ toast.classList.add('hidden'); }, 1400);
   }
   document.getElementById('fridgeOpenAddBtn').addEventListener('click', openFridgeAddSheet);
   document.getElementById('fridgeAddSheetCloseBtn').addEventListener('click', closeFridgeAddSheet);
@@ -951,7 +976,8 @@
     state.fridgeExpiryOpen = false;
     renderFridgeExpiryToggle();
     saveFridge();
-    closeFridgeAddSheet();
+    showFridgeAddedToast();
+    input.focus();
   }
 
   document.getElementById('fridgeAddCatChips').addEventListener('click', function(e){
