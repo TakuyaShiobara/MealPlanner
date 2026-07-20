@@ -605,8 +605,20 @@
     _savedScrollY = window.scrollY || window.pageYOffset || 0;
   }
   function restoreScrollPosition(){
+    var target = _savedScrollY;
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    window.scrollTo(0, _savedScrollY);
+    function apply(){ window.scrollTo(0, target); }
+    apply();
+    // モバイルはキーボードが閉じるアニメーションの途中/後にブラウザが勝手にスクロール位置を
+    // ずらすことがあるため、キーボード分のビューポート復帰(visualViewportのresize)を検知した
+    // タイミングと、その後しばらくの間繰り返し補正をかける
+    if(window.visualViewport){
+      var vv = window.visualViewport;
+      var onResize = function(){ apply(); };
+      vv.addEventListener('resize', onResize);
+      setTimeout(function(){ vv.removeEventListener('resize', onResize); }, 500);
+    }
+    [50, 150, 320, 500].forEach(function(delay){ setTimeout(apply, delay); });
   }
   function jsonpRequest(params){
     return new Promise(function(resolve, reject){
