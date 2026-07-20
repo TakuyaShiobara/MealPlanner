@@ -62,6 +62,7 @@
     background:var(--bg);
     padding:14px 14px 8px;
   }
+  .topbar-row.hidden{ display:none; }
   .topbar-row{
     display:flex; align-items:center; justify-content:space-between;
     background:var(--paper);
@@ -169,14 +170,10 @@
   .btn-primary:active{ background:var(--herb-deep); }
   .btn-primary[disabled]{ background:#a9bcb1; cursor:default; }
 
-  .fridge-toolbar{ margin-bottom:12px; }
+  .fridge-toolbar{ }
+  .fridge-toolbar.hidden{ display:none; }
   .fridge-open-add-btn{ width:100%; padding:13px 0; font-size:14.5px; }
-  .fridge-name-input{
-    width:100%; box-sizing:border-box; border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
-    font-size:16px; background:#fff; margin-bottom:14px;
-  }
-  .fridge-add-section-label{ margin-bottom:8px; }
-  .fridge-add-confirm-btn{ width:100%; padding:12px 0; font-size:14.5px; margin-top:4px; }
+  .fridge-add-section-label{ margin-top:16px; margin-bottom:8px; }
   .fridge-added-toast{
     text-align:center; color:var(--herb-deep); font-size:12.5px; font-weight:700; margin:10px 0 0;
   }
@@ -316,13 +313,16 @@
 <div class="app-shell">
 
   <header class="topbar">
-    <div class="topbar-row">
+    <div class="topbar-row" id="topbarRow">
       <button id="prevWeek" class="nav-btn" aria-label="前の週へ">‹</button>
       <div class="week-label">
         <h1 id="weekRange" class="display-font">-</h1>
         <button id="todayBtn" class="today-link">今週へ戻る</button>
       </div>
       <button id="nextWeek" class="nav-btn" aria-label="次の週へ">›</button>
+    </div>
+    <div class="fridge-toolbar hidden" id="fridgeHeaderToolbar">
+      <button id="fridgeOpenAddBtn" class="btn-primary fridge-open-add-btn" type="button">＋ 食材を追加</button>
     </div>
     <div class="sync-row" id="syncRow">
       <span class="sync-dot" id="syncDot"></span>
@@ -337,9 +337,6 @@
   </main>
 
   <main id="fridgeView" class="view hidden">
-    <div class="fridge-toolbar">
-      <button id="fridgeOpenAddBtn" class="btn-primary fridge-open-add-btn" type="button">＋ 食材を追加</button>
-    </div>
     <div id="fridgeCatChips" class="fridge-cat-chips"></div>
     <ul id="fridgeList" class="fridge-list"></ul>
   </main>
@@ -387,7 +384,10 @@
     </div>
 
     <div class="block-card">
-      <input id="fridgeInput" class="fridge-name-input" placeholder="食材を入力（例：鶏むね肉）" />
+      <div class="input-row">
+        <input id="fridgeInput" placeholder="食材を入力（例：鶏むね肉）" />
+        <button id="fridgeAddBtn" class="btn-primary">追加</button>
+      </div>
 
       <p class="block-label fridge-add-section-label">カテゴリ</p>
       <div id="fridgeAddCatChips" class="fridge-cat-chips fridge-add-cat-chips"></div>
@@ -396,8 +396,6 @@
         <span class="icon">📅</span><span id="fridgeExpiryToggleLabel">賞味期限を設定（任意）</span>
       </button>
       <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
-
-      <button id="fridgeAddBtn" class="btn-primary fridge-add-confirm-btn">追加する</button>
       <p id="fridgeAddedToast" class="fridge-added-toast hidden">✓ 追加しました。続けて入力できます</p>
     </div>
   </div>
@@ -601,24 +599,25 @@
   // ---------- JSONP（AI提案専用：GAS経由でGeminiを呼ぶ）----------
   var _jsonpCount = 0;
   var _savedScrollY = 0;
-  function saveScrollPosition(){
+  // シート表示中はbodyを固定してスクロールできないようにする。
+  // 仮想キーボードの開閉でスクロール位置がずれる問題を、事後補正ではなく
+  // 背景を動かせなくすることで根本的に防ぐ。
+  function lockBodyScroll(){
     _savedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = (-_savedScrollY) + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
   }
-  function restoreScrollPosition(){
-    var target = _savedScrollY;
+  function unlockBodyScroll(){
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    function apply(){ window.scrollTo(0, target); }
-    apply();
-    // モバイルはキーボードが閉じるアニメーションの途中/後にブラウザが勝手にスクロール位置を
-    // ずらすことがあるため、キーボード分のビューポート復帰(visualViewportのresize)を検知した
-    // タイミングと、その後しばらくの間繰り返し補正をかける
-    if(window.visualViewport){
-      var vv = window.visualViewport;
-      var onResize = function(){ apply(); };
-      vv.addEventListener('resize', onResize);
-      setTimeout(function(){ vv.removeEventListener('resize', onResize); }, 500);
-    }
-    [50, 150, 320, 500].forEach(function(delay){ setTimeout(apply, delay); });
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, _savedScrollY);
   }
   function jsonpRequest(params){
     return new Promise(function(resolve, reject){
@@ -811,7 +810,7 @@
 
   // ---------- render: sheet ----------
   function openSheet(dateKey){
-    saveScrollPosition();
+    lockBodyScroll();
     state.openDateKey = dateKey;
     state.suggestResults = [];
     state.suggestError = null;
@@ -828,7 +827,7 @@
   function closeSheet(){
     document.getElementById('sheetOverlay').classList.add('hidden');
     state.openDateKey = null;
-    restoreScrollPosition();
+    unlockBodyScroll();
   }
 
   function renderTagChips(){
@@ -899,6 +898,8 @@
       state.activeView = view;
       document.getElementById('planView').classList.toggle('hidden', view!=='plan');
       document.getElementById('fridgeView').classList.toggle('hidden', view!=='fridge');
+      document.getElementById('topbarRow').classList.toggle('hidden', view==='fridge');
+      document.getElementById('fridgeHeaderToolbar').classList.toggle('hidden', view!=='fridge');
     });
   });
 
@@ -947,7 +948,7 @@
   });
 
   function openFridgeAddSheet(){
-    saveScrollPosition();
+    lockBodyScroll();
     document.getElementById('fridgeInput').value = '';
     document.getElementById('fridgeExpiryInput').value = '';
     state.fridgeExpiryOpen = false;
@@ -958,7 +959,7 @@
   }
   function closeFridgeAddSheet(){
     document.getElementById('fridgeAddSheetOverlay').classList.add('hidden');
-    restoreScrollPosition();
+    unlockBodyScroll();
   }
   var _fridgeToastTimer = null;
   function showFridgeAddedToast(){
