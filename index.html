@@ -225,10 +225,6 @@
   .fridge-item{
     display:flex; align-items:center; gap:7px; background:var(--paper);
     border-radius:10px; padding:8px 10px; box-shadow:var(--shadow); min-width:0; cursor:pointer;
-    border:1.6px solid transparent;
-  }
-  .fridge-item.is-expired-card{
-    background:var(--brick-pale); border-color:var(--brick);
   }
   .fridge-dot{ width:6px; height:6px; border-radius:50%; background:var(--herb); flex-shrink:0; }
   .fridge-dot.is-warn{ background:var(--yolk); }
@@ -808,14 +804,13 @@
     var daysLeft = expiryDaysLeft(item.expiry);
     var urgency = '';
     var expiryText = '';
-    var isExpired = false;
     if(daysLeft !== null){
-      if(daysLeft < 0){ urgency = 'is-expired'; expiryText = '⚠️ 期限切れ'; isExpired = true; }
-      else if(daysLeft === 0){ urgency = 'is-expired'; expiryText = '⚠️ 今日まで'; isExpired = true; }
+      if(daysLeft < 0){ urgency = 'is-expired'; expiryText = '期限切れ'; }
+      else if(daysLeft === 0){ urgency = 'is-expired'; expiryText = '今日まで'; }
       else if(daysLeft <= 3){ urgency = 'is-warn'; expiryText = 'あと' + daysLeft + '日'; }
       else { expiryText = item.expiry + 'まで'; }
     }
-    return '<li class="fridge-item' + (isExpired ? ' is-expired-card' : '') + '" data-index="' + entry.index + '"><span class="fridge-dot ' + urgency + '"></span>' +
+    return '<li class="fridge-item" data-index="' + entry.index + '"><span class="fridge-dot ' + urgency + '"></span>' +
       '<span class="fridge-main"><span class="fridge-name">' + esc(item.name) + '</span>' +
       '<span class="tag-chip c-' + fridgeCategoryColorClass(item.category) + '">' + esc(item.category) + '</span>' +
       (expiryText ? '<div class="fridge-expiry ' + urgency + '">' + esc(expiryText) + '</div>' : '') +
