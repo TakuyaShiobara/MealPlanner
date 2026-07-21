@@ -970,13 +970,21 @@
     if(e.target.id === 'moreSuggestBtn') fetchSuggestions(true);
   });
 
+  // タップ直後に別要素へフォーカスが移ってから入力欄へfocus()し直すと、
+  // iOS Safariなどでは見た目上フォーカスされていてもキーボードが開かないことがある。
+  // 少し遅らせて再フォーカスすることでキーボードを確実に開かせる。
+  function focusFridgeInputSoon(){
+    var input = document.getElementById('fridgeInput');
+    input.blur();
+    setTimeout(function(){ input.focus(); }, 50);
+  }
   function openFridgeAddSheet(){
     lockBodyScroll();
     document.getElementById('fridgeInput').value = '';
     resetFridgeExpiryUI();
     document.getElementById('fridgeAddedToast').classList.add('hidden');
     document.getElementById('fridgeAddSheetOverlay').classList.remove('hidden');
-    document.getElementById('fridgeInput').focus();
+    focusFridgeInputSoon();
   }
   function closeFridgeAddSheet(){
     document.getElementById('fridgeAddSheetOverlay').classList.add('hidden');
@@ -1009,7 +1017,7 @@
     resetFridgeExpiryUI();
     saveFridge();
     showFridgeAddedToast();
-    input.focus();
+    focusFridgeInputSoon();
   }
 
   document.getElementById('fridgeAddCatChips').addEventListener('click', function(e){
