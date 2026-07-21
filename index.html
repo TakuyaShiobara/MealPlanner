@@ -496,9 +496,9 @@
   ];
   var FRIDGE_CATEGORIES = [
     {key:'野菜', color:'herb'},
-    {key:'肉', color:'brick'},
+    {key:'肉・魚', color:'brick'},
     {key:'麺・米・パン', color:'yolk'},
-    {key:'乳製品', color:'ink-soft'},
+    {key:'乳製品・卵', color:'ink-soft'},
     {key:'冷凍', color:'blueberry'},
     {key:'その他', color:'ink-soft'}
   ];
@@ -1131,8 +1131,14 @@
       return;
     }
     if(e.target.closest('#fridgeExpiryCalendarBtn')){
-      if(expiryInput.showPicker){ expiryInput.showPicker(); }
-      else { expiryInput.classList.remove('hidden'); expiryInput.focus(); }
+      // showPicker()はinputが非表示(display:none)のままだと例外を投げて失敗するため、
+      // 先に表示状態にしてから呼び出す
+      expiryInput.classList.remove('hidden');
+      if(expiryInput.showPicker){
+        try { expiryInput.showPicker(); } catch(err) { expiryInput.focus(); }
+      } else {
+        expiryInput.focus();
+      }
     }
   });
   document.getElementById('fridgeExpiryInput').addEventListener('change', syncFridgeExpiryPresetFromInput);
