@@ -197,7 +197,6 @@
     border:1.6px solid var(--line); border-radius:10px; padding:11px 10px;
     font-size:13px; background:var(--paper); color:var(--ink-soft); margin-top:8px;
   }
-  .fridge-expiry-input.hidden{ display:none; }
   .fridge-expiry-quick-chips{ display:flex; flex-wrap:nowrap; gap:6px; }
   .fridge-expiry-quick-btn{
     flex:1 1 0; min-width:0; border:1.6px solid var(--line); background:#fff; border-radius:20px;
@@ -205,7 +204,6 @@
     text-align:center; white-space:nowrap;
   }
   .fridge-expiry-quick-btn.active{ background:var(--herb); border-color:var(--herb); color:#fff; }
-  .fridge-expiry-quick-btn-icon{ flex:0 0 auto; padding:8px 12px; font-size:14px; }
   .fridge-cat-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
   .fridge-add-cat-chips{ margin-bottom:8px; }
   .fridge-cat-chip-btn{
@@ -421,9 +419,8 @@
         <button type="button" class="fridge-expiry-quick-btn" data-preset="today">今日</button>
         <button type="button" class="fridge-expiry-quick-btn" data-preset="tomorrow">明日</button>
         <button type="button" class="fridge-expiry-quick-btn" data-preset="3days">3日後</button>
-        <button type="button" class="fridge-expiry-quick-btn fridge-expiry-quick-btn-icon" id="fridgeExpiryCalendarBtn" aria-label="日付を選択">📅</button>
       </div>
-      <input id="fridgeExpiryInput" class="fridge-expiry-input hidden" type="date" aria-label="賞味期限（任意）" />
+      <input id="fridgeExpiryInput" class="fridge-expiry-input" type="date" aria-label="賞味期限（任意）" />
 
       <button id="fridgeAddBtn" class="btn-primary fridge-add-confirm-btn">＋ 追加</button>
       <p id="fridgeAddedToast" class="fridge-added-toast hidden">✓ 追加しました。続けて入力できます</p>
@@ -1124,8 +1121,6 @@
     document.querySelectorAll('#fridgeExpiryQuickChips [data-preset]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-preset') === state.fridgeExpiryPreset);
     });
-    document.getElementById('fridgeExpiryCalendarBtn').classList.toggle('active', state.fridgeExpiryPreset === 'custom');
-    document.getElementById('fridgeExpiryInput').classList.toggle('hidden', state.fridgeExpiryPreset !== 'custom');
   }
   function resetFridgeExpiryUI(){
     document.getElementById('fridgeExpiryInput').value = '';
@@ -1134,23 +1129,11 @@
   }
   document.getElementById('fridgeExpiryQuickChips').addEventListener('click', function(e){
     var presetBtn = e.target.closest('.fridge-expiry-quick-btn[data-preset]');
+    if(!presetBtn) return;
     var expiryInput = document.getElementById('fridgeExpiryInput');
-    if(presetBtn){
-      var preset = presetBtn.getAttribute('data-preset');
-      expiryInput.value = (state.fridgeExpiryPreset === preset) ? '' : fridgeExpiryPresetDate(preset);
-      syncFridgeExpiryPresetFromInput();
-      return;
-    }
-    if(e.target.closest('#fridgeExpiryCalendarBtn')){
-      // showPicker()はinputが非表示(display:none)のままだと例外を投げて失敗するため、
-      // 先に表示状態にしてから呼び出す
-      expiryInput.classList.remove('hidden');
-      if(expiryInput.showPicker){
-        try { expiryInput.showPicker(); } catch(err) { expiryInput.focus(); }
-      } else {
-        expiryInput.focus();
-      }
-    }
+    var preset = presetBtn.getAttribute('data-preset');
+    expiryInput.value = (state.fridgeExpiryPreset === preset) ? '' : fridgeExpiryPresetDate(preset);
+    syncFridgeExpiryPresetFromInput();
   });
   document.getElementById('fridgeExpiryInput').addEventListener('change', syncFridgeExpiryPresetFromInput);
 
