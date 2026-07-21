@@ -1131,8 +1131,14 @@
       return;
     }
     if(e.target.closest('#fridgeExpiryCalendarBtn')){
-      if(expiryInput.showPicker){ expiryInput.showPicker(); }
-      else { expiryInput.classList.remove('hidden'); expiryInput.focus(); }
+      // showPicker()はinputが非表示(display:none)のままだと例外を投げて失敗するため、
+      // 先に表示状態にしてから呼び出す
+      expiryInput.classList.remove('hidden');
+      if(expiryInput.showPicker){
+        try { expiryInput.showPicker(); } catch(err) { expiryInput.focus(); }
+      } else {
+        expiryInput.focus();
+      }
     }
   });
   document.getElementById('fridgeExpiryInput').addEventListener('change', syncFridgeExpiryPresetFromInput);
