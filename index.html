@@ -230,7 +230,8 @@
   .fridge-dot.is-expired{ background:var(--brick); }
   .fridge-main{ flex:1; min-width:0; }
   .fridge-name{ display:block; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .fridge-item .tag-chip{ font-size:9.5px; padding:1px 7px; margin-top:2px; display:inline-block; }
+  .fridge-badges{ display:flex; flex-wrap:wrap; gap:3px; margin-top:2px; }
+  .fridge-item .tag-chip{ font-size:9.5px; padding:1px 7px; display:inline-block; }
   .fridge-expiry{ font-size:10.5px; color:var(--ink-soft); margin-top:1px; }
   .fridge-expiry.is-warn{ color:var(--yolk); }
   .fridge-expiry.is-expired{ color:var(--brick); font-weight:700; }
@@ -513,7 +514,7 @@
     activeView: 'plan',
     openDateKey: null,
     fridgeCategoryFilter: FRIDGE_CATEGORY_ALL,
-    fridgeAddCategory: 'その他',
+    fridgeAddCategories: ['その他'],
     fridgeExpiryPreset: '',
     fridgeEditIndex: null,
     selectedTag: 'ヘルシー',
@@ -546,12 +547,13 @@
   function normalizeFridge(arr){
     if(!Array.isArray(arr)) return [];
     return arr.map(function(item){
-      if(item && typeof item === 'object') return {
-        name: item.name || '',
-        expiry: item.expiry || '',
-        category: item.category || 'その他'
-      };
-      return {name: String(item==null ? '' : item), expiry: '', category: 'その他'};
+      if(item && typeof item === 'object'){
+        var categories = Array.isArray(item.categories) ? item.categories.filter(function(c){ return c; })
+          : (item.category ? [item.category] : []);
+        if(categories.length === 0) categories = ['その他'];
+        return { name: item.name || '', expiry: item.expiry || '', categories: categories };
+      }
+      return {name: String(item==null ? '' : item), expiry: '', categories: ['その他']};
     }).filter(function(item){ return item.name; });
   }
   function fridgeCategoryColorClass(category){
@@ -778,7 +780,7 @@
   function renderFridgeAddCatChips(){
     var box = document.getElementById('fridgeAddCatChips');
     box.innerHTML = FRIDGE_CATEGORIES.map(function(c){
-      return '<button class="fridge-cat-chip-btn' + (state.fridgeAddCategory===c.key ? ' active' : '') +
+      return '<button class="fridge-cat-chip-btn' + (state.fridgeAddCategories.indexOf(c.key) !== -1 ? ' active' : '') +
         '" data-category="' + esc(c.key) + '">' + esc(c.key) + '</button>';
     }).join('');
   }
@@ -808,9 +810,12 @@
       else if(daysLeft <= 3){ urgency = 'is-warn'; expiryText = 'あと' + daysLeft + '日'; }
       else { expiryText = item.expiry + 'まで'; }
     }
+    var badges = (item.categories || []).map(function(cat){
+      return '<span class="tag-chip c-' + fridgeCategoryColorClass(cat) + '">' + esc(cat) + '</span>';
+    }).join('');
     return '<li class="fridge-item" data-index="' + entry.index + '"><span class="fridge-dot ' + urgency + '"></span>' +
       '<span class="fridge-main"><span class="fridge-name">' + esc(item.name) + '</span>' +
-      '<span class="tag-chip c-' + fridgeCategoryColorClass(item.category) + '">' + esc(item.category) + '</span>' +
+      '<span class="fridge-badges">' + badges + '</span>' +
       (expiryText ? '<div class="fridge-expiry ' + urgency + '">' + esc(expiryText) + '</div>' : '') +
       '</span>' +
       '<button class="fridge-remove" data-index="' + entry.index + '" aria-label="' + esc(item.name) + 'を削除">✕</button></li>';
@@ -818,7 +823,7 @@
   function renderFridgeList(){
     var list = document.getElementById('fridgeList');
     var visible = state.fridge.filter(function(item){
-      return state.fridgeCategoryFilter === FRIDGE_CATEGORY_ALL || item.category === state.fridgeCategoryFilter;
+      return state.fridgeCategoryFilter === FRIDGE_CATEGORY_ALL || (item.categories || []).indexOf(state.fridgeCategoryFilter) !== -1;
     });
     if(state.fridge.length === 0){
       list.innerHTML = '<li><div class="fridge-empty">食材はまだ空っぽです。<br>買ったものを入力してみましょう。</div></li>';
@@ -844,16 +849,19 @@
       }
 
       // 「すべて」表示はカテゴリごとにグループ分けして見やすくする
+      // 複数カテゴリを持つ食材は、該当するすべてのグループに表示される
       var knownKeys = FRIDGE_CATEGORIES.map(function(c){ return c.key; });
       var groups = {};
       var extraOrder = [];
       entries.forEach(function(entry){
-        var key = entry.item.category || 'その他';
-        if(!groups[key]){
-          groups[key] = [];
-          if(knownKeys.indexOf(key) === -1) extraOrder.push(key);
-        }
-        groups[key].push(entry);
+        var cats = (entry.item.categories && entry.item.categories.length) ? entry.item.categories : ['その他'];
+        cats.forEach(function(key){
+          if(!groups[key]){
+            groups[key] = [];
+            if(knownKeys.indexOf(key) === -1) extraOrder.push(key);
+          }
+          groups[key].push(entry);
+        });
       });
       var sortedKeys = knownKeys.filter(function(k){ return groups[k]; }).concat(extraOrder);
       sortedKeys.forEach(function(key){
@@ -863,7 +871,7 @@
       });
     } else {
       var ordered = entries.filter(function(entry){
-        return entry.item.category === state.fridgeCategoryFilter;
+        return (entry.item.categories || []).indexOf(state.fridgeCategoryFilter) !== -1;
       }).sort(fridgeEntrySort);
       ordered.forEach(function(entry){ html += renderFridgeItemLi(entry); });
     }
@@ -1027,7 +1035,7 @@
     state.fridgeEditIndex = null;
     lockBodyScroll();
     document.getElementById('fridgeInput').value = '';
-    state.fridgeAddCategory = 'その他';
+    state.fridgeAddCategories = ['その他'];
     renderFridgeAddCatChips();
     resetFridgeExpiryUI();
     document.getElementById('fridgeAddedToast').classList.add('hidden');
@@ -1041,7 +1049,7 @@
     state.fridgeEditIndex = index;
     lockBodyScroll();
     document.getElementById('fridgeInput').value = item.name;
-    state.fridgeAddCategory = item.category || 'その他';
+    state.fridgeAddCategories = (item.categories && item.categories.length) ? item.categories.slice() : ['その他'];
     renderFridgeAddCatChips();
     document.getElementById('fridgeExpiryInput').value = item.expiry || '';
     syncFridgeExpiryPresetFromInput();
@@ -1077,7 +1085,11 @@
     var expiryInput = document.getElementById('fridgeExpiryInput');
     var val = input.value.trim();
     if(!val) return;
-    var itemData = {name: val, expiry: expiryInput.value || '', category: state.fridgeAddCategory};
+    var itemData = {
+      name: val,
+      expiry: expiryInput.value || '',
+      categories: state.fridgeAddCategories.length ? state.fridgeAddCategories.slice() : ['その他']
+    };
 
     if(state.fridgeEditIndex !== null){
       state.fridge[state.fridgeEditIndex] = itemData;
@@ -1097,7 +1109,10 @@
   document.getElementById('fridgeAddCatChips').addEventListener('click', function(e){
     var btn = e.target.closest('.fridge-cat-chip-btn');
     if(!btn) return;
-    state.fridgeAddCategory = btn.getAttribute('data-category');
+    var key = btn.getAttribute('data-category');
+    var idx = state.fridgeAddCategories.indexOf(key);
+    if(idx !== -1) state.fridgeAddCategories.splice(idx, 1);
+    else state.fridgeAddCategories.push(key);
     renderFridgeAddCatChips();
   });
 
