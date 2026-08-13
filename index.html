@@ -464,7 +464,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+  import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDsqyclocK99Hx5v_NdqXOTttPXczr5s-8",
@@ -489,6 +489,12 @@
     },
     saveShoppingList: function(items) {
       return set(ref(db, 'shoppingList'), items);
+    },
+    saveShoppingAndFridge: function(shoppingList, fridge) {
+      // shoppingListとfridgeを1回のupdateでまとめて書き込む。
+      // 別々にsetすると、片方の書き込みが反映される前にonValueの
+      // リスナーが発火し、もう片方が古い値で上書きされてしまうことがあるため。
+      return update(ref(db), { shoppingList: shoppingList, fridge: fridge });
     },
     listenAll: function(callback) {
       // plan・fridge・shoppingListをリアルタイム監視
@@ -538,6 +544,32 @@
     {key:'その他', color:'ink-soft'}
   ];
   var FRIDGE_CATEGORY_ALL = 'すべて';
+  var FRIDGE_CATEGORY_KEYWORDS = {
+    '野菜': ['キャベツ','にんじん','人参','玉ねぎ','たまねぎ','玉ネギ','じゃがいも','ジャガイモ','ピーマン','トマト','きゅうり','キュウリ','なす','ナス','ほうれん草','レタス','大根','だいこん','ねぎ','ネギ','もやし','ブロッコリー','かぼちゃ','カボチャ','しいたけ','しめじ','えのき','きのこ','にんにく','ニンニク','しょうが','生姜','さつまいも','サツマイモ','ごぼう','れんこん','アボカド','枝豆','パプリカ','セロリ','小松菜','白菜'],
+    '肉・魚': ['豚肉','牛肉','鶏肉','ささみ','むね肉','もも肉','ひき肉','挽肉','ベーコン','ハム','ソーセージ','ウインナー','魚','サーモン','鮭','まぐろ','マグロ','さば','サバ','たら','タラ','えび','エビ','いか','イカ','たこ','タコ','あじ','アジ','ぶり','ブリ','かつお','カツオ'],
+    '麺・米・パン': ['うどん','そば','パスタ','ラーメン','お米','ご飯','食パン','パン','もち','餅','そうめん','春雨','スパゲティ'],
+    '乳製品・卵': ['牛乳','ミルク','チーズ','ヨーグルト','バター','卵','たまご','生クリーム'],
+    '冷凍': ['冷凍','アイス']
+  };
+  function guessFridgeCategoriesByKeyword(name){
+    var matched = [];
+    Object.keys(FRIDGE_CATEGORY_KEYWORDS).forEach(function(cat){
+      var hit = FRIDGE_CATEGORY_KEYWORDS[cat].some(function(kw){ return name.indexOf(kw) !== -1; });
+      if(hit) matched.push(cat);
+    });
+    return matched;
+  }
+  function guessFridgeCategoriesForName(name){
+    var trimmed = name.trim();
+    // 1. 同名の食材が（現在または過去に）登録されていれば、そのカテゴリを再利用する
+    var existing = state.fridge.filter(function(it){ return it.name.trim() === trimmed; })[0];
+    if(existing && existing.categories && existing.categories.length) return existing.categories.slice();
+    // 2. 一般的な食材名から推測する
+    var guessed = guessFridgeCategoriesByKeyword(trimmed);
+    if(guessed.length) return guessed;
+    // 3. どちらにも当てはまらなければ「その他」
+    return ['その他'];
+  }
 
   var state = {
     weekStart: getMonday(new Date()),
@@ -1267,9 +1299,15 @@
     var item = state.shoppingList[idx];
     if(!item) return;
     state.shoppingList.splice(idx,1);
-    state.fridge.push({name: item.name, expiry: '', categories: ['その他']});
-    saveShoppingList();
-    saveFridge();
+    state.fridge.push({name: item.name, expiry: '', categories: guessFridgeCategoriesForName(item.name)});
+    renderShoppingList();
+    renderFridgeList();
+    waitForFirebase().then(function(){
+      window._fb.saveShoppingAndFridge(state.shoppingList, state.fridge).catch(function(){
+        state.syncError = true;
+        renderSyncRow();
+      });
+    });
   });
 
   document.getElementById('fridgeCatChips').addEventListener('click', function(e){
